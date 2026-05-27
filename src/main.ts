@@ -42,7 +42,10 @@ function initSceneEditor() {
     empty.classList.add('hidden')
     props.classList.remove('hidden')
     props.innerHTML = `
-      <div class="inspector-title">${obj.type}</div>
+      <div class="inspector-title-row">
+        <div class="inspector-title">${obj.type}</div>
+        <button id="btn-close-inspector" class="inspector-close" title="Zamknij">✕</button>
+      </div>
       <div class="inspector-row"><label>Nazwa</label><input type="text"   id="insp-label" value="${obj.label}" /></div>
       <div class="inspector-row"><label>X</label>    <input type="number" id="insp-x"     value="${Math.round(obj.x)}" /></div>
       <div class="inspector-row"><label>Y</label>    <input type="number" id="insp-y"     value="${Math.round(obj.y)}" /></div>
@@ -60,6 +63,8 @@ function initSceneEditor() {
       sceneEditor?.updateObjectProp(obj.id, 'y', parseFloat((e.target as HTMLInputElement).value)))
     props.querySelector<HTMLInputElement>('#insp-txt')?.addEventListener('change', e =>
       sceneEditor?.updateObjectProp(obj.id, 'text', (e.target as HTMLInputElement).value))
+    props.querySelector('#btn-close-inspector')?.addEventListener('click', () =>
+      sceneEditor?.select(null))
     props.querySelector('#btn-duplicate-obj')?.addEventListener('click', () =>
       sceneEditor?.duplicateObject(obj.id))
     props.querySelector('#btn-delete-obj')?.addEventListener('click', () =>

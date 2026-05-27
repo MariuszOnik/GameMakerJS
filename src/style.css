@@ -218,12 +218,30 @@ button { cursor: pointer; border: none; background: none; color: inherit; font: 
   outline: none;
   border-color: var(--accent);
 }
+.inspector-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
 .inspector-title {
   font-size: 12px;
   font-weight: 600;
   color: var(--accent);
-  margin-bottom: 8px;
 }
+.inspector-close {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+.inspector-close:hover { color: var(--text); background: var(--bg-card); }
 .inspector-section-label {
   font-size: 10px;
   text-transform: uppercase;
