@@ -47,7 +47,10 @@ function initSceneEditor() {
       <div class="inspector-row"><label>X</label>    <input type="number" id="insp-x"     value="${Math.round(obj.x)}" /></div>
       <div class="inspector-row"><label>Y</label>    <input type="number" id="insp-y"     value="${Math.round(obj.y)}" /></div>
       ${obj.type === 'text' ? `<div class="inspector-row"><label>Tekst</label><input type="text" id="insp-txt" value="${obj.text ?? ''}" /></div>` : ''}
-      <div class="inspector-row"><button id="btn-delete-obj" class="btn-danger">🗑 Usuń obiekt</button></div>
+      <div class="inspector-row" style="gap:6px">
+        <button id="btn-duplicate-obj" class="btn-secondary">⧉ Duplikuj</button>
+        <button id="btn-delete-obj" class="btn-danger">🗑 Usuń</button>
+      </div>
     `
     props.querySelector<HTMLInputElement>('#insp-label')?.addEventListener('change', e =>
       sceneEditor?.updateObjectProp(obj.id, 'label', (e.target as HTMLInputElement).value))
@@ -57,6 +60,8 @@ function initSceneEditor() {
       sceneEditor?.updateObjectProp(obj.id, 'y', parseFloat((e.target as HTMLInputElement).value)))
     props.querySelector<HTMLInputElement>('#insp-txt')?.addEventListener('change', e =>
       sceneEditor?.updateObjectProp(obj.id, 'text', (e.target as HTMLInputElement).value))
+    props.querySelector('#btn-duplicate-obj')?.addEventListener('click', () =>
+      sceneEditor?.duplicateObject(obj.id))
     props.querySelector('#btn-delete-obj')?.addEventListener('click', () =>
       sceneEditor?.removeObject(obj.id))
   })
@@ -72,11 +77,15 @@ function initSceneEditor() {
   document.getElementById('btn-add-sprite')?.addEventListener('click', () => sceneEditor?.addObject('sprite'))
   document.getElementById('btn-add-text')?.addEventListener('click', () => sceneEditor?.addObject('text'))
 
-  // Delete selected object with keyboard (Delete / Backspace)
+  // Keyboard shortcuts for selected object
   window.addEventListener('keydown', e => {
-    if ((e.key === 'Delete' || e.key === 'Backspace') && document.activeElement?.tagName !== 'INPUT') {
-      const btn = document.getElementById('btn-delete-obj') as HTMLButtonElement | null
-      btn?.click()
+    if (document.activeElement?.tagName === 'INPUT') return
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      document.getElementById('btn-delete-obj')?.click()
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+      e.preventDefault()
+      document.getElementById('btn-duplicate-obj')?.click()
     }
   })
 }

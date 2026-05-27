@@ -144,6 +144,23 @@ export class SceneEditor {
     this.currentTool = tool
   }
 
+  duplicateObject(id: string) {
+    const src = this.objects.find(o => o.id === id)
+    if (!src) return
+    const copy: SceneObject = {
+      ...src,
+      id: `obj_${++this.idCounter}`,
+      label: `${src.label}_kopia`,
+      x: src.x + 24,
+      y: src.y + 24,
+      phaserObj: undefined
+    }
+    this.objects.push(copy)
+    if (this.scene) this.spawnPhaserObj(copy)
+    this.select(copy.id)
+    return copy
+  }
+
   addObject(type: SceneObject['type']) {
     const cam = this.scene?.cameras?.main
     const cx = cam ? cam.scrollX + cam.width / 2 : 200
