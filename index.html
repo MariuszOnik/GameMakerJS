@@ -10,8 +10,8 @@
     <meta name="apple-mobile-web-app-title" content="GameMakerJS" />
     <meta name="theme-color" content="#1a1a2e" />
     <title>GameMaker JS</title>
-    <script type="module" crossorigin src="/GameMakerJS/assets/index-DLOiyalH.js"></script>
-    <link rel="stylesheet" crossorigin href="/GameMakerJS/assets/index-k6P8lfhv.css">
+    <script type="module" crossorigin src="/GameMakerJS/assets/index-56DBp5g7.js"></script>
+    <link rel="stylesheet" crossorigin href="/GameMakerJS/assets/index-BNHNpiHX.css">
   <link rel="manifest" href="/GameMakerJS/manifest.webmanifest"></head>
   <body>
     <div id="app">
@@ -77,6 +77,7 @@
             <button id="btn-clear-graph" class="tool-btn" title="Wyczyść graf">🗑</button>
             <button id="btn-export-graph" class="tool-btn" title="Eksportuj JSON">⬇</button>
             <div class="toolbar-sep"></div>
+            <button id="btn-show-code" class="tool-btn" title="Podgląd wygenerowanego kodu JS">{ }</button>
             <button id="btn-custom-nodes" class="tool-btn" title="Własne węzły (edytor kodu)">&lt;/&gt;</button>
           </div>
           <div id="node-editor-container">
@@ -252,39 +253,87 @@
           </div>
 
           <div class="help-section">
-            <div class="help-section-title">&lt;/&gt; Własne węzły (przycisk &lt;/&gt; w toolbarze Logiki)</div>
-            <p>Możesz pisać własne węzły w JavaScript bez modyfikowania kodu aplikacji. Węzeł jest kompilowany razem z grafem do natywnego JS.</p>
-            <p><b>Szablon:</b></p>
+            <div class="help-section-title">&lt;/&gt; Własne węzły – krok po kroku</div>
+            <p>Kliknij przycisk <b>&lt;/&gt;</b> w toolbarze Logiki. W edytorze kodu wpisz definicję węzła i kliknij <b>⚡ Zarejestruj węzeł</b>. Węzeł pojawi się w menu ＋ Węzeł i jest gotowy do użycia w grafie.</p>
+
+            <p><b>Krok 1 – tożsamość węzła</b></p>
             <pre class="help-code">registerNode({
-  type: 'moj-wezel',       // unikalny ID
-  label: 'Mój węzeł',     // nazwa w menu
-  icon: '⭐',
-  category: 'action',     // 'action' | 'value' | 'event'
+  type: 'dodaj-punkty',   // unikalny klucz – nie używaj spacji ani polskich liter
+  label: 'Dodaj punkty',  // nazwa wyświetlana w menu
+  icon: '⭐',             // emoji widoczne na węźle
+  category: 'action',     // 'action' (robi coś) | 'value' (zwraca wartość) | 'event'</pre>
 
-  props: {
-    target: { label: 'Sprite ID', defaultValue: 'Sprite1' },
-    amount: { label: 'Wartość',   defaultValue: 10 }
-  },
+            <p><b>Krok 2 – właściwości (props)</b> – pola widoczne bezpośrednio na węźle.</p>
+            <pre class="help-code">  props: {
+    // Zwykłe pole tekstowe:
+    name: { label: 'Zmienna', defaultValue: 'punkty' },
 
-  run(inputs) {
-    // inputs.X = skompilowane wyrażenie JS dla danego props.X
+    // Lista rozwijana:
+    mode: { label: 'Tryb', defaultValue: 'dodaj', options: ['dodaj', 'odejmij', 'ustaw'] },
+
+    // Liczba:
+    amount: { label: 'Ilość', defaultValue: 10 },
+
+    // Lista obiektów sceny (zamiast wpisywania nazwy ręcznie):
+    target: { label: 'Sprite ID', defaultValue: 'Sprite1', inputType: 'sprite-select' },
+  },</pre>
+
+            <p><b>Krok 3 – porty wejściowe (opcjonalne)</b> – pozwalają podłączyć węzły Liczba / Pobierz Zmienną itp.</p>
+            <pre class="help-code">  inputs: [
+    // type: 'number' lub 'string'
+    { id: 'amount', label: 'Ilość', type: 'number' },
+  ],
+  // Uwaga: port 'exec' jest dodawany automatycznie – nie wpisuj go tutaj.</pre>
+
+            <p><b>Krok 4 – funkcja run(inputs)</b> – zwraca fragment kodu JS który zostanie wstrzyknięty do gry.</p>
+            <pre class="help-code">  run(inputs) {
+    // inputs.X  →  gotowe wyrażenie JS dla danego portu lub prop
+    //
+    // Jeśli prop 'target' = 'Gracz'  →  inputs.target  =  "Gracz"
+    // Jeśli port 'amount' podłączony do węzła Liczba(5)  →  inputs.amount  =  5
+    // Jeśli port 'amount' podłączony do węzła Zmienna  →  inputs.amount  =  (this.variables.get("x") ?? 0)
+    //
+    // Wewnątrz szablonu (backtick) wstawiaj inputs.X przez ${inputs.X}
+
     return `
-      const _s = this.sprites.get(${inputs.target});
-      if (_s) {
-        // twój kod
-      }
+      // 'this' = PlayScene Phaser – masz dostęp do:
+      // this.sprites      – Map<nazwaObiektu, GameObject>
+      // this.variables    – Map<nazwaZmiennej, number|string>
+      // this.time         – timery: this.time.delayedCall(500, () => { ... })
+      // this.cameras.main – kamera: zoom, follow, shake, fade
+      // this.physics      – silnik fizyki Arcade
+
+      const _punkty = (this.variables.get(${inputs.name}) ?? 0);
+      this.variables.set(${inputs.name}, _punkty + ${inputs.amount});
     `
   }
 })</pre>
-            <div class="help-table">
-              <div class="help-row"><span class="help-key">inputs.X</span><span>Wyrażenie JS dla props.X – już skompilowane przez graf (np. <code>"Gracz"</code> albo <code>(this.variables.get("x") ?? 0)</code>).</span></div>
-              <div class="help-row"><span class="help-key">this.sprites</span><span>Map&lt;string, GameObject&gt; – wszystkie obiekty sceny po nazwie.</span></div>
-              <div class="help-row"><span class="help-key">this.variables</span><span>Map&lt;string, number|string&gt; – zmienne użytkownika (set/get).</span></div>
-              <div class="help-row"><span class="help-key">this.time</span><span>Phaser Time – <code>this.time.delayedCall(ms, fn)</code> do timerów.</span></div>
-              <div class="help-row"><span class="help-key">this.cameras.main</span><span>Kamera gry – zoom, scroll, follow.</span></div>
-              <div class="help-row"><span class="help-key">this.physics</span><span>Silnik Arcade – dodawanie ciał, kolizji w locie.</span></div>
-            </div>
-            <p class="help-tip">💡 Własne węzły są zapisane w przeglądarce (localStorage) i dostępne we wszystkich projektach. Usunięcie węzła nie usuwa go z grafu – połączenia pozostają, ale kod przestaje się generować.</p>
+
+            <p><b>Pełny przykład – węzeł "Dodaj punkty":</b></p>
+            <pre class="help-code">registerNode({
+  type: 'dodaj-punkty',
+  label: 'Dodaj punkty',
+  icon: '⭐',
+  category: 'action',
+  inputs: [
+    { id: 'amount', label: 'Ilość', type: 'number' }
+  ],
+  props: {
+    name:   { label: 'Zmienna',  defaultValue: 'punkty' },
+    hudId:  { label: 'HUD ID',   defaultValue: 'Tekst1', inputType: 'sprite-select' },
+  },
+  run(inputs) {
+    return `
+      const _v = (this.variables.get(${inputs.name}) ?? 0) + ${inputs.amount};
+      this.variables.set(${inputs.name}, _v);
+      const _hud = this.sprites.get(${inputs.hudId});
+      if (_hud && _hud.setText) _hud.setText('Punkty: ' + _v);
+    `
+  }
+})</pre>
+
+            <p class="help-tip">💡 Kliknij przycisk <b>{ }</b> w toolbarze Logiki → podgląd wygenerowanego JS z całego grafu. Przydatne gdy coś nie działa – zobaczysz dokładnie co zostało skompilowane.</p>
+            <p class="help-tip">💡 Węzły są zapisane w przeglądarce (localStorage). Kliknij ✏ na liście by edytować, 🗑 by usunąć (usuwa też wszystkie instancje z grafu).</p>
           </div>
 
           <div class="help-section">
@@ -315,8 +364,90 @@
             </div>
           </div>
 
+          <div class="help-section">
+            <div class="help-section-title">🗺 Plan rozbudowy</div>
+
+            <div class="roadmap-phase">
+              <div class="roadmap-phase-title">Faza 1 – Fundamenty</div>
+              <div class="roadmap-item done">Usuń obiekt / węzeł ze sceny i grafu</div>
+              <div class="roadmap-item done">Przesuwanie kamery (middle mouse, spacja, pinch)</div>
+              <div class="roadmap-item done">Zmień nazwę obiektu w inspektorze</div>
+              <div class="roadmap-item done">Duplikuj obiekt (Ctrl+D)</div>
+              <div class="roadmap-item done">Undo / Redo (Ctrl+Z / Ctrl+Y)</div>
+              <div class="roadmap-item done">Snap do siatki</div>
+            </div>
+
+            <div class="roadmap-phase">
+              <div class="roadmap-phase-title">Faza 2 – Węzły logiki</div>
+              <div class="roadmap-item done">Warunek If / else</div>
+              <div class="roadmap-item done">Zmienne (ustaw / pobierz)</div>
+              <div class="roadmap-item done">Matematyka, Losowa liczba</div>
+              <div class="roadmap-item done">Czekaj (timer)</div>
+              <div class="roadmap-item done">Wyświetl tekst (HUD)</div>
+              <div class="roadmap-item">Zmień scenę</div>
+            </div>
+
+            <div class="roadmap-phase">
+              <div class="roadmap-phase-title">Faza 3 – Zasoby</div>
+              <div class="roadmap-item done">Upload PNG, panel zasobów</div>
+              <div class="roadmap-item">Sprite sheet / animacje</div>
+              <div class="roadmap-item">Dźwięki (MP3/OGG + węzeł)</div>
+            </div>
+
+            <div class="roadmap-phase">
+              <div class="roadmap-phase-title">Faza 4 – Fizyka</div>
+              <div class="roadmap-item done">Arcade Physics – grawitacja, prędkość, odbicie</div>
+              <div class="roadmap-item done">Kolizje, platformy statyczne</div>
+              <div class="roadmap-item done">Kamera śledząca (inspektor + węzły kamery)</div>
+              <div class="roadmap-item done">Granice świata</div>
+              <div class="roadmap-item">Szablony gier (Platformer, Top-down…)</div>
+            </div>
+
+            <div class="roadmap-phase">
+              <div class="roadmap-phase-title">Faza 5 – Mobile UX</div>
+              <div class="roadmap-item">Joystick on-screen</div>
+              <div class="roadmap-item">Przyciski akcji (skok, strzał)</div>
+              <div class="roadmap-item">Pełny ekran podczas gry</div>
+            </div>
+
+            <div class="roadmap-phase">
+              <div class="roadmap-phase-title">Faza 6 – Eksport</div>
+              <div class="roadmap-item">Export HTML (gra jako jeden plik)</div>
+              <div class="roadmap-item">Import / Export projektu (.gmjs)</div>
+              <div class="roadmap-item">Link / QR do udostępnienia gry</div>
+            </div>
+
+            <div class="roadmap-phase">
+              <div class="roadmap-phase-title">Faza 7 – Zaawansowane</div>
+              <div class="roadmap-item done">Kompilator AST (graf → natywny JS)</div>
+              <div class="roadmap-item done">Własne węzły (registerNode API)</div>
+              <div class="roadmap-item done">Węzły kamery (follow, zoom, shake)</div>
+              <div class="roadmap-item done">Lista obiektów sceny w węzłach</div>
+              <div class="roadmap-item done">Podgląd wygenerowanego JS ({ } toolbar)</div>
+              <div class="roadmap-item">Wiele scen (Menu → Poziomy → Game Over)</div>
+              <div class="roadmap-item">Per-object logic (każdy sprite ma własny graf)</div>
+              <div class="roadmap-item">Tilemap editor</div>
+            </div>
+          </div>
+
           <div class="help-build-info">Build: <span id="build-version"></span></div>
         </div>
+      </div>
+    </div>
+
+    <!-- Generated code preview modal -->
+    <div id="modal-gencode-backdrop" class="hidden">
+      <div id="modal-gencode">
+        <div class="modal-gencode-header">
+          <span>{ } Wygenerowany kod JS</span>
+          <button id="modal-gencode-close">✕</button>
+        </div>
+        <div id="modal-gencode-tabs">
+          <button class="gencode-tab active" data-event="on-start">Na Start</button>
+          <button class="gencode-tab" data-event="on-update">Na Update</button>
+          <button class="gencode-tab" data-event="on-input">Na Dotyk/Klik</button>
+        </div>
+        <pre id="modal-gencode-body"></pre>
       </div>
     </div>
 
