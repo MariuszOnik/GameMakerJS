@@ -201,18 +201,35 @@ export class NodeEditor {
         const label = document.createElement('span')
         label.className = 'port-label'
         label.textContent = meta.label
-        const inp = document.createElement('input')
-        inp.className = 'node-input-field'
-        inp.type = typeof meta.defaultValue === 'number' ? 'number' : 'text'
-        inp.value = String(node.props[key] ?? meta.defaultValue)
-        // Prevent pan/drag when interacting with input
-        inp.addEventListener('mousedown', e => e.stopPropagation())
-        inp.addEventListener('touchstart', e => e.stopPropagation(), { passive: true })
-        inp.addEventListener('input', () => {
-          node.props[key] = inp.type === 'number' ? parseFloat(inp.value) || 0 : inp.value
-        })
-        row.appendChild(label)
-        row.appendChild(inp)
+
+        if (meta.options) {
+          const sel = document.createElement('select')
+          sel.className = 'node-input-field'
+          for (const opt of meta.options) {
+            const o = document.createElement('option')
+            o.value = opt; o.textContent = opt
+            if (String(node.props[key] ?? meta.defaultValue) === opt) o.selected = true
+            sel.appendChild(o)
+          }
+          sel.addEventListener('mousedown', e => e.stopPropagation())
+          sel.addEventListener('touchstart', e => e.stopPropagation(), { passive: true })
+          sel.addEventListener('change', () => { node.props[key] = sel.value })
+          row.appendChild(label)
+          row.appendChild(sel)
+        } else {
+          const inp = document.createElement('input')
+          inp.className = 'node-input-field'
+          inp.type = typeof meta.defaultValue === 'number' ? 'number' : 'text'
+          inp.value = String(node.props[key] ?? meta.defaultValue)
+          inp.addEventListener('mousedown', e => e.stopPropagation())
+          inp.addEventListener('touchstart', e => e.stopPropagation(), { passive: true })
+          inp.addEventListener('input', () => {
+            node.props[key] = inp.type === 'number' ? parseFloat(inp.value) || 0 : inp.value
+          })
+          row.appendChild(label)
+          row.appendChild(inp)
+        }
+
         body.appendChild(row)
       }
     }

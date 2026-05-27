@@ -6,6 +6,12 @@ export interface PortDef {
   type: PortType
 }
 
+export interface PropDef {
+  label: string
+  defaultValue: string | number
+  options?: string[]
+}
+
 export interface NodeDef {
   type: string
   label: string
@@ -13,32 +19,22 @@ export interface NodeDef {
   category: 'event' | 'action' | 'value'
   inputs: PortDef[]
   outputs: PortDef[]
-  /** Default property values editable in node body */
-  props?: Record<string, { label: string; defaultValue: string | number }>
+  props?: Record<string, PropDef>
 }
 
 export const NODE_DEFS: Record<string, NodeDef> = {
   'on-start': {
-    type: 'on-start',
-    label: 'Na Start',
-    icon: '🟢',
-    category: 'event',
+    type: 'on-start', label: 'Na Start', icon: '🟢', category: 'event',
     inputs: [],
     outputs: [{ id: 'exec', label: '', type: 'exec' }]
   },
   'on-update': {
-    type: 'on-update',
-    label: 'Na Update',
-    icon: '🔄',
-    category: 'event',
+    type: 'on-update', label: 'Na Update', icon: '🔄', category: 'event',
     inputs: [],
     outputs: [{ id: 'exec', label: '', type: 'exec' }]
   },
   'on-input': {
-    type: 'on-input',
-    label: 'Na Dotyk/Klik',
-    icon: '👆',
-    category: 'event',
+    type: 'on-input', label: 'Na Dotyk/Klik', icon: '👆', category: 'event',
     inputs: [],
     outputs: [
       { id: 'exec', label: '', type: 'exec' },
@@ -47,10 +43,7 @@ export const NODE_DEFS: Record<string, NodeDef> = {
     ]
   },
   'move-sprite': {
-    type: 'move-sprite',
-    label: 'Rusz Sprite',
-    icon: '➡',
-    category: 'action',
+    type: 'move-sprite', label: 'Rusz Sprite', icon: '➡', category: 'action',
     inputs: [
       { id: 'exec', label: '', type: 'exec' },
       { id: 'target', label: 'ID', type: 'string' },
@@ -65,10 +58,7 @@ export const NODE_DEFS: Record<string, NodeDef> = {
     }
   },
   'set-velocity': {
-    type: 'set-velocity',
-    label: 'Ustaw Prędkość',
-    icon: '💨',
-    category: 'action',
+    type: 'set-velocity', label: 'Ustaw Prędkość', icon: '💨', category: 'action',
     inputs: [
       { id: 'exec', label: '', type: 'exec' },
       { id: 'target', label: 'ID', type: 'string' },
@@ -82,39 +72,105 @@ export const NODE_DEFS: Record<string, NodeDef> = {
     }
   },
   'log': {
-    type: 'log',
-    label: 'Log',
-    icon: '📋',
-    category: 'action',
+    type: 'log', label: 'Log', icon: '📋', category: 'action',
     inputs: [
       { id: 'exec', label: '', type: 'exec' },
       { id: 'msg', label: 'Wiadomość', type: 'string' }
     ],
     outputs: [{ id: 'exec', label: '', type: 'exec' }],
-    props: {
-      msg: { label: 'Tekst', defaultValue: 'Hello!' }
-    }
+    props: { msg: { label: 'Tekst', defaultValue: 'Hello!' } }
   },
   'number': {
-    type: 'number',
-    label: 'Liczba',
-    icon: '🔢',
-    category: 'value',
+    type: 'number', label: 'Liczba', icon: '🔢', category: 'value',
+    inputs: [],
+    outputs: [{ id: 'value', label: 'Wartość', type: 'number' }],
+    props: { value: { label: 'Liczba', defaultValue: 0 } }
+  },
+  'string': {
+    type: 'string', label: 'Tekst', icon: '📝', category: 'value',
+    inputs: [],
+    outputs: [{ id: 'value', label: 'Wartość', type: 'string' }],
+    props: { value: { label: 'Tekst', defaultValue: '' } }
+  },
+
+  // ── Faza 2 ─────────────────────────────────────────────
+
+  'math': {
+    type: 'math', label: 'Matematyka', icon: '➗', category: 'value',
+    inputs: [
+      { id: 'a', label: 'A', type: 'number' },
+      { id: 'b', label: 'B', type: 'number' }
+    ],
+    outputs: [{ id: 'result', label: 'Wynik', type: 'number' }],
+    props: {
+      operator: { label: 'Operator', defaultValue: '+', options: ['+', '-', '*', '/', '%'] },
+      a: { label: 'A', defaultValue: 0 },
+      b: { label: 'B', defaultValue: 0 }
+    }
+  },
+  'random': {
+    type: 'random', label: 'Losowa liczba', icon: '🎲', category: 'value',
     inputs: [],
     outputs: [{ id: 'value', label: 'Wartość', type: 'number' }],
     props: {
-      value: { label: 'Liczba', defaultValue: 0 }
+      min: { label: 'Min', defaultValue: 0 },
+      max: { label: 'Max', defaultValue: 100 }
     }
   },
-  'string': {
-    type: 'string',
-    label: 'Tekst',
-    icon: '📝',
-    category: 'value',
-    inputs: [],
-    outputs: [{ id: 'value', label: 'Wartość', type: 'string' }],
+  'if-condition': {
+    type: 'if-condition', label: 'Warunek', icon: '🔀', category: 'action',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'a', label: 'A', type: 'number' },
+      { id: 'b', label: 'B', type: 'number' }
+    ],
+    outputs: [
+      { id: 'exec-true', label: 'Prawda', type: 'exec' },
+      { id: 'exec-false', label: 'Fałsz', type: 'exec' }
+    ],
     props: {
-      value: { label: 'Tekst', defaultValue: '' }
+      operator: { label: 'Operator', defaultValue: '>', options: ['>', '<', '>=', '<=', '==', '!='] },
+      a: { label: 'A', defaultValue: 0 },
+      b: { label: 'B', defaultValue: 0 }
+    }
+  },
+  'set-variable': {
+    type: 'set-variable', label: 'Ustaw Zmienną', icon: '📦', category: 'action',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'value', label: 'Wartość', type: 'number' }
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+    props: {
+      name: { label: 'Nazwa', defaultValue: 'punkty' },
+      value: { label: 'Wartość', defaultValue: 0 }
+    }
+  },
+  'get-variable': {
+    type: 'get-variable', label: 'Pobierz Zmienną', icon: '📤', category: 'value',
+    inputs: [],
+    outputs: [{ id: 'value', label: 'Wartość', type: 'number' }],
+    props: { name: { label: 'Nazwa', defaultValue: 'punkty' } }
+  },
+  'wait': {
+    type: 'wait', label: 'Czekaj', icon: '⏳', category: 'action',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'seconds', label: 'Sekundy', type: 'number' }
+    ],
+    outputs: [{ id: 'exec', label: 'Po', type: 'exec' }],
+    props: { seconds: { label: 'Sekundy', defaultValue: 1 } }
+  },
+  'show-text': {
+    type: 'show-text', label: 'Wyświetl Tekst', icon: '💬', category: 'action',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'text', label: 'Tekst', type: 'string' }
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+    props: {
+      target: { label: 'ID Tekstu', defaultValue: 'Tekst1' },
+      text: { label: 'Treść', defaultValue: 'Wynik: 0' }
     }
   }
 }

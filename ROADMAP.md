@@ -24,13 +24,13 @@
 
 ## Faza 2 – Więcej węzłów logiki
 
-- [ ] If / Warunek – rozgałęzienie: jeśli A > B → exec A, else → exec B
-- [ ] Zmienna – przechowuj i czytaj wartości (punkty, życia, flagi)
-- [ ] Matematyka – dodaj / odejmij / pomnóż / porównaj liczby
-- [ ] Losowa liczba – random między min a max
-- [ ] Timer / Czekaj – opóźnienie wykonania o N sekund
+- [x] If / Warunek – rozgałęzienie: jeśli A > B → exec A, else → exec B
+- [x] Zmienna – przechowuj i czytaj wartości (punkty, życia, flagi)
+- [x] Matematyka – dodaj / odejmij / pomnóż / porównaj liczby
+- [x] Losowa liczba – random między min a max
+- [x] Timer / Czekaj – opóźnienie wykonania o N sekund
 - [ ] Zmień scenę – przeskocz do innego ekranu gry
-- [ ] Wyświetl tekst – zaktualizuj napis na ekranie (HUD, wynik)
+- [x] Wyświetl tekst – zaktualizuj napis na ekranie (HUD, wynik)
 
 ---
 

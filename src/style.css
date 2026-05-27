@@ -445,6 +445,15 @@ button { cursor: pointer; border: none; background: none; color: inherit; font: 
   -webkit-user-select: text;
 }
 .node-input-field:focus { outline: none; border-color: var(--accent); }
+select.node-input-field { cursor: pointer; }
+.menu-title {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  padding: 6px 12px 2px;
+  pointer-events: none;
+}
 
 /* SVG connections */
 #connections-svg {
