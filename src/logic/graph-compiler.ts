@@ -1,4 +1,5 @@
 import ts from 'typescript'
+import { getCustomNodes, getCustomRunFn } from './custom-nodes'
 
 interface Connection {
   fromNode: string
@@ -20,6 +21,9 @@ interface GraphData {
 
 export class GraphCompiler {
   private graph: GraphData
+  private customCodeMap = new Map<string, string>()
+  private readonly helperPrinter = ts.createPrinter()
+  private readonly helperSF = ts.createSourceFile('', '', ts.ScriptTarget.ES2020)
 
   constructor(graph: GraphData) {
     this.graph = graph
@@ -27,11 +31,12 @@ export class GraphCompiler {
 
   // Główna funkcja kompilująca dany event (np. 'on-update') do czystego JS
   public compileEvent(eventType: string): string {
+    this.customCodeMap.clear()
+
     const eventNodes = this.graph.nodes.filter(n => n.type === eventType)
     const statements: ts.Statement[] = []
 
     for (const eventNode of eventNodes) {
-      // Szukamy co jest podpięte pod wyjście 'exec' tego eventu
       const firstConn = this.graph.connections.find(
         c => c.fromNode === eventNode.id && c.fromPort === 'exec'
       )
@@ -40,19 +45,20 @@ export class GraphCompiler {
       }
     }
 
-    // Tworzymy wirtualny plik źródłowy i drukujemy kod do postaci stringa
     const sourceFile = ts.createSourceFile('generated.ts', '', ts.ScriptTarget.ES2020, false, ts.ScriptKind.TS)
     const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed })
-    
-    // Łączymy spakowane linie kodu w jeden ciąg znaków
     const tsCode = statements.map(st => printer.printNode(ts.EmitHint.Unspecified, st, sourceFile)).join('\n')
 
-    // Kompilacja offline z TS do czystego JS w przeglądarce
     const jsCompiled = ts.transpileModule(tsCode, {
       compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS }
     })
 
-    return jsCompiled.outputText
+    // Podstawiamy kod własnych węzłów w miejsce placeholderów
+    let output = jsCompiled.outputText
+    for (const [ph, code] of this.customCodeMap) {
+      output = output.replace(new RegExp(`${ph}\\(\\);?`, 'g'), `{\n${code}\n}`)
+    }
+    return output
   }
 
   // Rekurencyjne przechodzenie po nitce linii 'exec'
@@ -299,6 +305,37 @@ export class GraphCompiler {
           )
         )
         // wait przerywa synchroniczny łańcuch – nie wywołujemy followExec bezpośrednio
+        break
+      }
+
+      default: {
+        // Próba obsługi węzła użytkownika z rejestru custom-nodes
+        const customDef = getCustomNodes().find(n => n.type === node.type)
+        if (!customDef) break
+
+        const inputs: Record<string, string> = {}
+        for (const propKey of Object.keys(customDef.props)) {
+          const expr = this.resolvePort(nodeId, propKey)
+          inputs[propKey] = this.helperPrinter.printNode(ts.EmitHint.Expression, expr, this.helperSF)
+        }
+
+        const placeholder = `__custom_${nodeId.replace(/\W/g, '_')}`
+        try {
+          const runFn = getCustomRunFn(customDef)
+          this.customCodeMap.set(placeholder, runFn(inputs))
+        } catch (err) {
+          console.error(`[Compiler] Błąd węzła "${customDef.type}":`, err)
+          this.customCodeMap.set(placeholder, `/* error in ${customDef.type} */`)
+        }
+
+        statements.push(
+          ts.factory.createExpressionStatement(
+            ts.factory.createCallExpression(
+              ts.factory.createIdentifier(placeholder), undefined, []
+            )
+          )
+        )
+        this.followExec('exec', nodeId, statements)
         break
       }
 

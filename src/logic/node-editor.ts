@@ -1,4 +1,5 @@
-import { NODE_DEFS, type NodeDef, type PortType } from './node-types'
+import { type NodeDef, type PortType } from './node-types'
+import { getAllNodeDefs } from './node-registry'
 
 export interface NodeInstance {
   id: string
@@ -132,7 +133,7 @@ export class NodeEditor {
   // ── Node creation ──────────────────────────────────────
 
   addNode(type: string, x?: number, y?: number): NodeInstance | null {
-    const def = NODE_DEFS[type]
+    const def = getAllNodeDefs()[type]
     if (!def) return null
 
     const cx = x ?? (this.container.clientWidth / 2 - this.panX) / this.scale
@@ -141,7 +142,7 @@ export class NodeEditor {
     const defaultProps: Record<string, string | number> = {}
     if (def.props) {
       for (const [k, v] of Object.entries(def.props)) {
-        defaultProps[k] = v.defaultValue
+        defaultProps[k] = (v as { defaultValue: string | number }).defaultValue
       }
     }
 
@@ -461,7 +462,7 @@ export class NodeEditor {
       const data = JSON.parse(json)
       // First pass: create all nodes
       for (const n of data.nodes ?? []) {
-        const def = NODE_DEFS[n.type]
+        const def = getAllNodeDefs()[n.type]
         if (!def) continue
         const node: NodeInstance = { id: n.id, type: n.type, x: n.x, y: n.y, props: { ...n.props } }
         this.nodes.set(node.id, node)

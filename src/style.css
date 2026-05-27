@@ -827,6 +827,164 @@ select.node-input-field { cursor: pointer; }
 }
 #btn-new-project:hover { border-color: var(--accent); color: var(--accent); }
 
+/* ── Custom nodes modal ───────────────────────────────── */
+#modal-code-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  padding: 12px;
+  backdrop-filter: blur(4px);
+}
+#modal-code-backdrop.hidden { display: none; }
+
+#modal-code {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: min(580px, 100%);
+  max-height: 90dvh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+
+.modal-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  color: var(--accent);
+}
+.modal-code-header button {
+  font-size: 18px;
+  color: var(--text-dim);
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.modal-code-header button:hover { background: var(--bg-card); }
+
+#modal-code-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#custom-node-list { display: flex; flex-direction: column; gap: 6px; }
+
+.custom-nodes-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 8px 10px;
+  background: var(--bg-card);
+  border-radius: 6px;
+}
+
+.custom-node-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.custom-node-icon { font-size: 18px; flex-shrink: 0; }
+.custom-node-label { font-size: 13px; font-weight: 600; flex: 1; }
+.custom-node-type {
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  background: rgba(74,222,128,0.1);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+.custom-node-del {
+  font-size: 14px;
+  color: var(--text-muted);
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.custom-node-del:hover { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+.code-editor-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 4px 0 2px;
+}
+
+.code-editor {
+  width: 100%;
+  min-height: 260px;
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: #e6edf3;
+  font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 12px;
+  resize: vertical;
+  tab-size: 2;
+  outline: none;
+  transition: border-color 0.15s;
+  -webkit-user-select: text;
+  user-select: text;
+  touch-action: auto;
+}
+.code-editor:focus { border-color: var(--accent); }
+
+.custom-node-success {
+  font-size: 12px;
+  color: var(--accent);
+  background: rgba(74,222,128,0.1);
+  border: 1px solid rgba(74,222,128,0.3);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+.custom-node-error-msg {
+  font-size: 12px;
+  color: #f87171;
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.btn-register {
+  width: 100%;
+  padding: 11px;
+  background: var(--accent-dim);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.btn-register:hover { background: var(--accent); color: #000; }
+
 /* ── Help modal ───────────────────────────────────────── */
 #modal-help-backdrop {
   position: fixed;

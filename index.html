@@ -74,6 +74,8 @@
             <div class="toolbar-sep"></div>
             <button id="btn-clear-graph" class="tool-btn" title="Wyczyść graf">🗑</button>
             <button id="btn-export-graph" class="tool-btn" title="Eksportuj JSON">⬇</button>
+            <div class="toolbar-sep"></div>
+            <button id="btn-custom-nodes" class="tool-btn" title="Własne węzły (edytor kodu)">&lt;/&gt;</button>
           </div>
           <div id="node-editor-container">
             <!-- Rete.js wstrzykiwany tutaj -->
@@ -144,6 +146,23 @@
             📂 Wgraj obraz
             <input type="file" id="asset-file-input" accept="image/png,image/jpeg,image/gif,image/webp" hidden />
           </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom nodes modal -->
+    <div id="modal-code-backdrop" class="hidden">
+      <div id="modal-code">
+        <div class="modal-code-header">
+          <span>&lt;/&gt; Własne węzły</span>
+          <button id="modal-code-close">✕</button>
+        </div>
+        <div id="modal-code-body">
+          <div id="custom-node-list"></div>
+          <div class="code-editor-label">Nowy węzeł – wpisz kod i kliknij Zarejestruj:</div>
+          <textarea id="custom-node-code" class="code-editor" spellcheck="false" autocorrect="off" autocapitalize="off"></textarea>
+          <div id="custom-node-feedback" class="hidden"></div>
+          <button id="btn-register-node" class="btn-register">⚡ Zarejestruj węzeł</button>
         </div>
       </div>
     </div>

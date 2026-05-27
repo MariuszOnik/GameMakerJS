@@ -2,7 +2,9 @@ import './style.css'
 import { SceneEditor } from './editor/scene-editor'
 import { NodeEditor } from './logic/node-editor'
 import { GameRunner } from './game/game-runner'
-import { NODE_DEFS } from './logic/node-types'
+import { getAllNodeDefs } from './logic/node-registry'
+import { getCustomNodes, saveCustomNode, deleteCustomNode } from './logic/custom-nodes'
+import type { CustomNodeDef } from './logic/custom-nodes'
 import {
   getAllProjects, getCurrentId, saveProject, loadProject,
   deleteProject, createNewId, setCurrentId, formatDate
@@ -205,7 +207,7 @@ function initNodeEditor() {
   function renderNodeMenu(filter = '') {
     menuItems.innerHTML = ''
     const q = filter.toLowerCase().trim()
-    const all = Object.values(NODE_DEFS)
+    const all = Object.values(getAllNodeDefs())
     for (const cat of CATEGORIES) {
       const nodes = all.filter(n =>
         n.category === cat.id &&
@@ -544,6 +546,110 @@ if ('serviceWorker' in navigator) {
     }
   })
 }
+
+// ── Custom nodes modal ─────────────────────────────────────
+const CUSTOM_NODE_TEMPLATE = [
+  "registerNode({",
+  "  type: 'moj-wezel',       // unikalny ID (bez spacji)",
+  "  label: 'Mój węzeł',     // nazwa w menu",
+  "  icon: '⭐',              // emoji",
+  "  category: 'action',     // 'action' | 'value' | 'event'",
+  "",
+  "  props: {",
+  "    target: { label: 'Sprite ID', defaultValue: 'Sprite1' },",
+  "    amount: { label: 'Wartość',   defaultValue: 10 }",
+  "  },",
+  "",
+  "  // inputs.X = skompilowane wyrażenie JS dla danego props.X",
+  "  // 'this' w runtime = Phaser PlayScene",
+  "  // Dostępne: this.sprites, this.variables, this.time, this.cameras, this.physics",
+  "  run(inputs) {",
+  "    return `",
+  "      const _s = this.sprites.get(${inputs.target});",
+  "      if (_s) {",
+  "        // twój kod tutaj",
+  "        console.log('Węzeł działa!', ${inputs.amount});",
+  "      }",
+  "    `",
+  "  }",
+  "})"
+].join('\n')
+
+function renderCustomNodeList() {
+  const list = document.getElementById('custom-node-list')!
+  const nodes = getCustomNodes()
+  if (!nodes.length) {
+    list.innerHTML = '<div class="custom-nodes-empty">Brak własnych węzłów. Napisz kod poniżej i kliknij Zarejestruj.</div>'
+    return
+  }
+  list.innerHTML = ''
+  for (const n of nodes) {
+    const row = document.createElement('div')
+    row.className = 'custom-node-row'
+    row.innerHTML = `
+      <span class="custom-node-icon">${n.icon}</span>
+      <span class="custom-node-label">${n.label}</span>
+      <code class="custom-node-type">${n.type}</code>
+      <button class="custom-node-del" data-type="${n.type}" title="Usuń">🗑</button>
+    `
+    row.querySelector<HTMLButtonElement>('.custom-node-del')?.addEventListener('click', () => {
+      if (!confirm(`Usunąć węzeł "${n.label}"?`)) return
+      deleteCustomNode(n.type)
+      renderCustomNodeList()
+    })
+    list.appendChild(row)
+  }
+}
+
+function openCustomNodesModal() {
+  renderCustomNodeList()
+  const ta = document.getElementById('custom-node-code') as HTMLTextAreaElement
+  if (!ta.value.trim()) ta.value = CUSTOM_NODE_TEMPLATE
+  document.getElementById('custom-node-feedback')!.className = 'hidden'
+  document.getElementById('modal-code-backdrop')!.classList.remove('hidden')
+}
+function closeCustomNodesModal() {
+  document.getElementById('modal-code-backdrop')!.classList.add('hidden')
+}
+
+document.getElementById('btn-custom-nodes')?.addEventListener('click', e => {
+  e.stopPropagation()
+  openCustomNodesModal()
+})
+document.getElementById('modal-code-close')?.addEventListener('click', closeCustomNodesModal)
+document.getElementById('modal-code-backdrop')?.addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeCustomNodesModal()
+})
+
+document.getElementById('btn-register-node')?.addEventListener('click', () => {
+  const code = (document.getElementById('custom-node-code') as HTMLTextAreaElement).value.trim()
+  const fb = document.getElementById('custom-node-feedback')!
+
+  try {
+    let captured: CustomNodeDef | null = null
+    const registerNode = (def: Record<string, unknown>) => {
+      if (!def.type || typeof def.type !== 'string') throw new Error('Brak pola "type"')
+      if (!def.run || typeof def.run !== 'function') throw new Error('Brak funkcji run(inputs)')
+      captured = {
+        type: def.type,
+        label: String(def.label ?? def.type),
+        icon: String(def.icon ?? '⭐'),
+        category: (def.category as CustomNodeDef['category']) ?? 'action',
+        props: (def.props as CustomNodeDef['props']) ?? {},
+        runSource: (def.run as Function).toString()
+      }
+    }
+    new Function('registerNode', code)(registerNode)
+    if (!captured) throw new Error('Nie wywołano registerNode()')
+    saveCustomNode(captured)
+    renderCustomNodeList()
+    fb.textContent = `✓ Węzeł "${(captured as CustomNodeDef).label}" zarejestrowany!`
+    fb.className = 'custom-node-success'
+  } catch (err: unknown) {
+    fb.textContent = String(err)
+    fb.className = 'custom-node-error-msg'
+  }
+})
 
 // ── Help modal ─────────────────────────────────────────────
 function openHelp() { document.getElementById('modal-help-backdrop')!.classList.remove('hidden') }
