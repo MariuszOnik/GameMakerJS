@@ -204,7 +204,8 @@ export class SceneEditor {
 
     const scene2 = scene as unknown as Phaser.Scene & { input: Phaser.Input.InputPlugin }
     scene2.input.on('pointermove', (p: Phaser.Input.Pointer) => {
-      if (p.isDown && this.selectedId === obj.id) {
+      // Drag object only in select mode
+      if (p.isDown && this.selectedId === obj.id && this.currentTool === 'select') {
         obj.x = Math.round(p.worldX - dragStartX)
         obj.y = Math.round(p.worldY - dragStartY)
         if (go instanceof Phaser.GameObjects.Rectangle) {
