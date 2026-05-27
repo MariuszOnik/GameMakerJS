@@ -445,7 +445,13 @@ fileInput?.addEventListener('change', () => {
   const reader = new FileReader()
   reader.onload = () => {
     try {
-      addAsset(file.name, reader.result as string)
+      const dataUrl = reader.result as string
+      const existing = getAllAssets().find(a => a.name === file.name)
+      if (existing) {
+        if (!confirm(`Obraz "${file.name}" już istnieje. Zastąpić?`)) return
+        deleteAsset(existing.key)
+      }
+      addAsset(file.name, dataUrl)
       sceneEditor?.reloadWithAssets()
       renderAssetsGrid()
     } catch {
