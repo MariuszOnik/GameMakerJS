@@ -153,39 +153,152 @@ export class GraphCompiler {
         break
       }
 
-      // --- NOWY KLOCEK: Wyświetl / Zmień Tekst (obsługuje 'display-text' lub 'set-text') ---
+      // show-text / display-text / set-text – wszystkie warianty nazw
+      case 'show-text':
       case 'display-text':
       case 'set-text': {
-        const textId = this.resolvePort(nodeId, 'textId')
-        const content = this.resolvePort(nodeId, 'content')
+        const node = this.graph.nodes.find(n => n.id === nodeId)!
+        // 'show-text' używa prop 'target' i portu 'text'; starsze warianty 'textId'/'content'
+        const isShowText = node.type === 'show-text'
+        const targetExpr = isShowText
+          ? this.resolvePort(nodeId, 'target')
+          : this.resolvePort(nodeId, 'textId')
+        const contentExpr = isShowText
+          ? this.resolvePort(nodeId, 'text')
+          : this.resolvePort(nodeId, 'content')
 
-        // Generuje kod: const t = this.texts.get(textId); if (t) t.setText(String(content));
+        // const s = this.sprites.get(target); if (s && s.setText) s.setText(String(content));
         statements.push(
-          ts.factory.createVariableStatement(
-            undefined,
+          ts.factory.createVariableStatement(undefined,
             ts.factory.createVariableDeclarationList([
-              ts.factory.createVariableDeclaration('t', undefined, undefined,
+              ts.factory.createVariableDeclaration('_t', undefined, undefined,
                 ts.factory.createCallExpression(
-                  ts.factory.createPropertyAccessExpression(ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('this'), 'texts'), 'get'),
-                  undefined, [textId]
+                  ts.factory.createPropertyAccessExpression(
+                    ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('this'), 'sprites'), 'get'),
+                  undefined, [targetExpr]
                 )
               )
             ], ts.NodeFlags.Const)
           ),
           ts.factory.createIfStatement(
-            ts.factory.createIdentifier('t'),
+            ts.factory.createBinaryExpression(
+              ts.factory.createIdentifier('_t'),
+              ts.SyntaxKind.AmpersandAmpersandToken,
+              ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('_t'), 'setText')
+            ),
             ts.factory.createBlock([
               ts.factory.createExpressionStatement(
                 ts.factory.createCallExpression(
-                  ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('t'), 'setText'),
+                  ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('_t'), 'setText'),
                   undefined,
-                  [ts.factory.createCallExpression(ts.factory.createIdentifier('String'), undefined, [content])]
+                  [ts.factory.createCallExpression(ts.factory.createIdentifier('String'), undefined, [contentExpr])]
                 )
               )
             ], true)
           )
         )
         this.followExec('exec', nodeId, statements)
+        break
+      }
+
+      case 'set-position': {
+        const target = this.resolvePort(nodeId, 'target')
+        const x = this.resolvePort(nodeId, 'x')
+        const y = this.resolvePort(nodeId, 'y')
+
+        // const s = this.sprites.get(target);
+        // if (s) { if (s.body) s.body.reset(x, y); else s.setPosition(x, y); }
+        statements.push(this.createSpriteActionBlock(target, [
+          ts.factory.createIfStatement(
+            ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('s'), 'body'),
+            ts.factory.createBlock([
+              ts.factory.createExpressionStatement(
+                ts.factory.createCallExpression(
+                  ts.factory.createPropertyAccessExpression(
+                    ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('s'), 'body'), 'reset'),
+                  undefined, [x, y]
+                )
+              )
+            ], true),
+            ts.factory.createBlock([
+              ts.factory.createExpressionStatement(
+                ts.factory.createCallExpression(
+                  ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('s'), 'setPosition'),
+                  undefined, [x, y]
+                )
+              )
+            ], true)
+          )
+        ]))
+
+        this.followExec('exec', nodeId, statements)
+        break
+      }
+
+      case 'set-visible': {
+        const nodeData = this.graph.nodes.find(n => n.id === nodeId)!
+        const target = this.resolvePort(nodeId, 'target')
+        const mode = String(nodeData.props.visible ?? 'pokaz')
+
+        let visibilityExpr: ts.Expression
+        if (mode === 'pokaz') {
+          visibilityExpr = ts.factory.createTrue()
+        } else if (mode === 'ukryj') {
+          visibilityExpr = ts.factory.createFalse()
+        } else {
+          // przelacz: !s.visible
+          visibilityExpr = ts.factory.createPrefixUnaryExpression(
+            ts.SyntaxKind.ExclamationToken,
+            ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('s'), 'visible')
+          )
+        }
+
+        statements.push(this.createSpriteActionBlock(target, [
+          ts.factory.createExpressionStatement(
+            ts.factory.createCallExpression(
+              ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('s'), 'setVisible'),
+              undefined, [visibilityExpr]
+            )
+          )
+        ]))
+
+        this.followExec('exec', nodeId, statements)
+        break
+      }
+
+      case 'wait': {
+        const seconds = this.resolvePort(nodeId, 'seconds')
+        const nextConn = this.graph.connections.find(c => c.fromNode === nodeId && c.fromPort === 'exec')
+        if (!nextConn) break
+
+        // Zbieramy resztę łańcucha w osobny blok i owijamy w delayedCall
+        const delayedStatements: ts.Statement[] = []
+        this.compileChain(nextConn.toNode, delayedStatements)
+
+        // this.time.delayedCall(seconds * 1000, () => { ... })
+        const msExpr = ts.factory.createBinaryExpression(
+          ts.factory.createParenthesizedExpression(seconds),
+          ts.SyntaxKind.AsteriskToken,
+          ts.factory.createNumericLiteral(1000)
+        )
+        statements.push(
+          ts.factory.createExpressionStatement(
+            ts.factory.createCallExpression(
+              ts.factory.createPropertyAccessExpression(
+                ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('this'), 'time'), 'delayedCall'),
+              undefined,
+              [
+                msExpr,
+                ts.factory.createArrowFunction(
+                  undefined, undefined, [], undefined,
+                  ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                  ts.factory.createBlock(delayedStatements, true)
+                )
+              ]
+            )
+          )
+        )
+        // wait przerywa synchroniczny łańcuch – nie wywołujemy followExec bezpośrednio
         break
       }
 
@@ -256,8 +369,8 @@ export class GraphCompiler {
           }
           // --- NOWY KLOCEK DANYCH: Pobierz właściwość obiektu (np. 'get-property') ---
           case 'get-property': {
-            const spriteId = String(fromNode.props.spriteId ?? fromNode.props.target ?? '')
-            const property = String(fromNode.props.property ?? 'x')
+            const spriteId = String(fromNode.props.target ?? fromNode.props.spriteId ?? '')
+            const property = String(fromNode.props.prop ?? fromNode.props.property ?? 'x')
             
             // Generuje inline: (this.sprites.get("player")?.body?.vy ?? 0) lub ?.x
             const isPhysicsProp = ['vx', 'vy', 'speed'].includes(property)
@@ -297,6 +410,27 @@ export class GraphCompiler {
             if (op === '/') token = ts.SyntaxKind.SlashToken
             if (op === '%') token = ts.SyntaxKind.PercentToken
             return ts.factory.createParenthesizedExpression(ts.factory.createBinaryExpression(aExpr, token, bExpr))
+          }
+          case 'random': {
+            const minExpr = this.resolvePort(fromNode.id, 'min')
+            const maxExpr = this.resolvePort(fromNode.id, 'max')
+            // Math.random() * (max - min) + min
+            return ts.factory.createParenthesizedExpression(
+              ts.factory.createBinaryExpression(
+                ts.factory.createBinaryExpression(
+                  ts.factory.createCallExpression(
+                    ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('Math'), 'random'),
+                    undefined, []
+                  ),
+                  ts.SyntaxKind.AsteriskToken,
+                  ts.factory.createParenthesizedExpression(
+                    ts.factory.createBinaryExpression(maxExpr, ts.SyntaxKind.MinusToken, minExpr)
+                  )
+                ),
+                ts.SyntaxKind.PlusToken,
+                minExpr
+              )
+            )
           }
           case 'on-input': {
             return ts.factory.createIdentifier(portId)
