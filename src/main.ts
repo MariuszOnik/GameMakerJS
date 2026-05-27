@@ -182,7 +182,6 @@ function initNodeEditor() {
     renderNodeMenu('')
     menu.classList.remove('hidden')
     searchInput.value = ''
-    searchInput.focus()
   }
   function closeMenu() {
     menu.classList.add('hidden')
