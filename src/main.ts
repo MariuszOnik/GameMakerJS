@@ -76,6 +76,8 @@ function initSceneEditor() {
 
   document.getElementById('btn-add-sprite')?.addEventListener('click', () => sceneEditor?.addObject('sprite'))
   document.getElementById('btn-add-text')?.addEventListener('click', () => sceneEditor?.addObject('text'))
+  document.getElementById('btn-undo')?.addEventListener('click', () => sceneEditor?.undo())
+  document.getElementById('btn-redo')?.addEventListener('click', () => sceneEditor?.redo())
 
   // Keyboard shortcuts for selected object
   window.addEventListener('keydown', e => {
