@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="GameMakerJS" />
+    <meta name="theme-color" content="#1a1a2e" />
+    <title>GameMaker JS</title>
+  </head>
+  <body>
+    <div id="app">
+      <!-- Header -->
+      <header id="app-header">
+        <input id="project-name" type="text" value="Projekt 1" title="Kliknij żeby zmienić nazwę" autocomplete="off" spellcheck="false" />
+        <div id="header-actions">
+          <button id="btn-new" title="Nowy projekt">＋</button>
+          <button id="btn-projects" title="Moje projekty">📂</button>
+          <button id="btn-save" title="Zapisz projekt">💾</button>
+          <button id="btn-play-header" title="Uruchom grę">▶</button>
+        </div>
+      </header>
+
+      <!-- Main content area -->
+      <main id="app-content">
+        <!-- SCENE TAB -->
+        <div id="tab-scene" class="tab-panel active">
+          <div id="scene-toolbar">
+            <button class="tool-btn active" data-tool="select" title="Zaznacz">⬡</button>
+            <button class="tool-btn" data-tool="move" title="Przesuń">✥</button>
+            <button class="tool-btn" data-tool="add" title="Dodaj obiekt">＋</button>
+            <div class="toolbar-sep"></div>
+            <button class="tool-btn" id="btn-add-sprite" title="Dodaj Sprite">🖼</button>
+            <button class="tool-btn" id="btn-add-text" title="Dodaj Tekst">T</button>
+          </div>
+          <div id="scene-viewport">
+            <!-- Phaser canvas wstrzykiwany tutaj -->
+          </div>
+          <div id="scene-inspector" class="inspector-panel">
+            <div id="inspector-empty">Kliknij obiekt aby edytować</div>
+            <div id="inspector-props" class="hidden"></div>
+          </div>
+        </div>
+
+        <!-- LOGIC TAB -->
+        <div id="tab-logic" class="tab-panel">
+          <div id="logic-toolbar">
+            <button id="btn-add-node" class="tool-btn">＋ Węzeł</button>
+            <div class="toolbar-sep"></div>
+            <button id="btn-clear-graph" class="tool-btn" title="Wyczyść graf">🗑</button>
+            <button id="btn-export-graph" class="tool-btn" title="Eksportuj JSON">⬇</button>
+          </div>
+          <div id="node-editor-container">
+            <!-- Rete.js wstrzykiwany tutaj -->
+          </div>
+          <div id="node-add-menu" class="hidden">
+            <div class="menu-title">Dodaj węzeł</div>
+            <button class="menu-item" data-node="on-start">🟢 Na Start</button>
+            <button class="menu-item" data-node="on-update">🔄 Na Update</button>
+            <button class="menu-item" data-node="on-input">👆 Na Dotyk/Klik</button>
+            <button class="menu-item" data-node="move-sprite">➡ Rusz Sprite</button>
+            <button class="menu-item" data-node="set-velocity">💨 Ustaw Prędkość</button>
+            <button class="menu-item" data-node="play-anim">🎬 Animacja</button>
+            <button class="menu-item" data-node="log">📋 Log</button>
+            <button class="menu-item" data-node="number">🔢 Liczba</button>
+            <button class="menu-item" data-node="string">📝 Tekst</button>
+          </div>
+        </div>
+
+        <!-- PLAY TAB -->
+        <div id="tab-play" class="tab-panel">
+          <div id="play-overlay">
+            <button id="btn-play-start">▶ Uruchom Grę</button>
+          </div>
+          <div id="play-viewport">
+            <!-- Phaser play mode canvas -->
+          </div>
+          <button id="btn-stop" class="hidden" title="Zatrzymaj grę">⏹ Stop</button>
+        </div>
+      </main>
+
+      <!-- Bottom tab bar -->
+      <nav id="tab-bar">
+        <button class="tab-btn active" data-tab="scene">
+          <span class="tab-icon">🖼</span>
+          <span class="tab-label">Scena</span>
+        </button>
+        <button class="tab-btn" data-tab="logic">
+          <span class="tab-icon">⬡</span>
+          <span class="tab-label">Logika</span>
+        </button>
+        <button class="tab-btn" data-tab="play">
+          <span class="tab-icon">▶</span>
+          <span class="tab-label">Gra</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Project manager modal -->
+    <div id="modal-backdrop" class="hidden">
+      <div id="modal-projects">
+        <div id="modal-header">
+          <span>📂 Moje projekty</span>
+          <button id="modal-close">✕</button>
+        </div>
+        <div id="modal-body">
+          <div id="project-list"><!-- filled by JS --></div>
+        </div>
+        <div id="modal-footer">
+          <button id="btn-new-project">＋ Nowy projekt</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
