@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { SceneObject } from '../editor/scene-editor'
 import { getAllAssets } from '../assets-store'
+import { GraphCompiler } from '../logic/graph-compiler'
 
 interface GraphData {
   nodes: Array<{ id: string; type: string; x: number; y: number; props: Record<string, string | number> }>
@@ -31,9 +32,13 @@ export class GameRunner {
     const graphData = graph
 
     class PlayScene extends Phaser.Scene {
-      private sprites: Map<string, Phaser.GameObjects.GameObject> = new Map()
-      private graph: GraphData | null = null
-      private variables: Map<string, number | string> = new Map()
+      public sprites: Map<string, Phaser.GameObjects.GameObject> = new Map()
+      public variables: Map<string, number | string> = new Map()
+
+      // Sloty na skompilowane, ultra-szybkie natywne funkcje maszynowe V8
+      private compiledOnStart: Function | null = null
+      private compiledOnUpdate: Function | null = null
+      private compiledOnInput: Function | null = null
 
       constructor() { super({ key: 'PlayScene' }) }
 
@@ -44,8 +49,31 @@ export class GameRunner {
       }
 
       create() {
-        this.graph = graphData
+        // 1. KOMPILACJA GRAFU PRZED STARTEM SCENY
+        if (graphData) {
+          const compiler = new GraphCompiler(graphData)
+          try {
+            const startJS = compiler.compileEvent('on-start')
+            const updateJS = compiler.compileEvent('on-update')
+            const inputJS = compiler.compileEvent('on-input')
 
+            // --- TUTAJ WRZUCAMY LOGI PODGLĄDU ---
+            console.log("%c=== WYGENEROWANY KOD JS Z GRAFU ===", "color: #00ffcc; font-weight: bold; font-size: 12px;");
+            console.log("%c[on-start]:", "color: #ff007f;", "\n" + (startJS.trim() || "// brak kodu"));
+            console.log("%c[on-update]:", "color: #ffaa00;", "\n" + (updateJS.trim() || "// brak kodu"));
+            console.log("%c[on-input]:", "color: #00aaff;", "\n" + (inputJS.trim() || "// brak kodu"));
+            console.log("%c===================================", "color: #00ffcc; font-weight: bold;");
+
+            // Dynamicznie tworzymy natywne funkcje ze stringów wygenerowanych przez AST
+            if (startJS.trim()) this.compiledOnStart = new Function(startJS)
+            if (updateJS.trim()) this.compiledOnUpdate = new Function(updateJS)
+            if (inputJS.trim()) this.compiledOnInput = new Function('x', 'y', inputJS)
+          } catch (err) {
+            console.error("Błąd kompilacji lub parsowania kodu grafu AST:", err)
+          }
+        }
+
+        // 2. INICJALIZACJA I BUDOWANIE OBIEKTÓW SCENY (Twój sprawdzony kod)
         const dynamicBodies: Phaser.GameObjects.GameObject[] = []
         const staticBodies: Phaser.GameObjects.GameObject[] = []
 
@@ -84,7 +112,7 @@ export class GameRunner {
           }
         }
 
-        // Add colliders: dynamic ↔ static and dynamic ↔ dynamic
+        // Dodawanie colliderów fizycznych
         for (const dyn of dynamicBodies) {
           for (const stat of staticBodies) this.physics.add.collider(dyn, stat)
           for (const dyn2 of dynamicBodies) {
@@ -92,194 +120,24 @@ export class GameRunner {
           }
         }
 
+        // 3. PODPIĘCIE EVENTÓW POD WYGENEROWANE FUNKCJE
         this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-          this.runEvent('on-input', { x: p.worldX, y: p.worldY })
+          if (this.compiledOnInput) {
+            // .call(this) przekazuje kontekst sceny tak, by wygenerowany kod widział mapy sprites/variables
+            this.compiledOnInput.call(this, p.worldX, p.worldY)
+          }
         })
 
-        this.runEvent('on-start', {})
+        if (this.compiledOnStart) {
+          this.compiledOnStart.call(this)
+        }
       }
 
       update() {
-        this.runEvent('on-update', {})
-      }
-
-      private runEvent(eventType: string, params: Record<string, number>) {
-        if (!this.graph) return
-        const eventNodes = this.graph.nodes.filter(n => n.type === eventType)
-        for (const eventNode of eventNodes) {
-          this.executeNode(eventNode.id, { ...params })
+        // Wykonuje się co klatkę (60 FPS) bezpośrednio jako natywny JS bez pętli i warunków runtime silnika
+        if (this.compiledOnUpdate) {
+          this.compiledOnUpdate.call(this)
         }
-      }
-
-      private resolvePort(nodeId: string, portId: string, ctx: Record<string, number | string>): number | string {
-        const node = this.graph!.nodes.find(n => n.id === nodeId)
-        if (!node) return 0
-        const conn = this.graph!.connections.find(c => c.toNode === nodeId && c.toPort === portId)
-        if (conn) return this.resolveOutput(conn.fromNode, conn.fromPort, ctx)
-        return node.props[portId] ?? 0
-      }
-
-      private resolveOutput(nodeId: string, portId: string, ctx: Record<string, number | string>): number | string {
-        const node = this.graph!.nodes.find(n => n.id === nodeId)
-        if (!node) return 0
-        switch (node.type) {
-          case 'number': return Number(node.props.value ?? 0)
-          case 'string': return String(node.props.value ?? '')
-          case 'on-input': return ctx[portId] ?? 0
-          case 'math': {
-            const a = Number(this.resolvePort(nodeId, 'a', ctx))
-            const b = Number(this.resolvePort(nodeId, 'b', ctx))
-            const op = String(node.props.operator ?? '+')
-            if (op === '+') return a + b
-            if (op === '-') return a - b
-            if (op === '*') return a * b
-            if (op === '/') return b !== 0 ? a / b : 0
-            if (op === '%') return b !== 0 ? a % b : 0
-            return 0
-          }
-          case 'random': {
-            const min = Number(this.resolvePort(nodeId, 'min', ctx))
-            const max = Number(this.resolvePort(nodeId, 'max', ctx))
-            return Math.random() * (max - min) + min
-          }
-          case 'get-variable': {
-            const name = String(node.props.name ?? '')
-            return this.variables.get(name) ?? 0
-          }
-          case 'get-property': {
-            const target = String(node.props.target ?? '')
-            const prop = String(node.props.prop ?? 'x')
-            const s = this.sprites.get(target)
-            if (!s) return 0
-            const go = s as Phaser.GameObjects.Image
-            if (prop === 'x') return go.x
-            if (prop === 'y') return go.y
-            if (prop === 'width') return go.width
-            if (prop === 'height') return go.height
-            if (prop === 'vx' || prop === 'vy') {
-              const body = getBody(s)
-              if (body instanceof Phaser.Physics.Arcade.Body)
-                return prop === 'vx' ? body.velocity.x : body.velocity.y
-            }
-            return 0
-          }
-          default: return node.props[portId] ?? 0
-        }
-      }
-
-      private executeNode(nodeId: string, ctx: Record<string, number | string>) {
-        if (!this.graph) return
-        const node = this.graph.nodes.find(n => n.id === nodeId)
-        if (!node) return
-
-        switch (node.type) {
-          case 'move-sprite': {
-            const target = String(this.resolvePort(nodeId, 'target', ctx))
-            const dx = Number(this.resolvePort(nodeId, 'dx', ctx))
-            const dy = Number(this.resolvePort(nodeId, 'dy', ctx))
-            const s = this.sprites.get(target)
-            if (s instanceof Phaser.GameObjects.Rectangle || s instanceof Phaser.GameObjects.Text) {
-              s.x += dx; s.y += dy
-            } else if (s) {
-              (s as Phaser.GameObjects.Image).x += dx;
-              (s as Phaser.GameObjects.Image).y += dy
-            }
-            break
-          }
-          case 'set-velocity': {
-            const target = String(this.resolvePort(nodeId, 'target', ctx))
-            const vx = Number(this.resolvePort(nodeId, 'vx', ctx))
-            const vy = Number(this.resolvePort(nodeId, 'vy', ctx))
-            const s = this.sprites.get(target)
-            if (s) {
-              const body = getBody(s)
-              if (body instanceof Phaser.Physics.Arcade.Body) {
-                body.setVelocity(vx, vy)
-              }
-            }
-            break
-          }
-          case 'jump': {
-            const target = String(this.resolvePort(nodeId, 'target', ctx))
-            const force = Number(this.resolvePort(nodeId, 'force', ctx))
-            const s = this.sprites.get(target)
-            if (s) {
-              const body = getBody(s)
-              if (body instanceof Phaser.Physics.Arcade.Body && body.blocked.down) {
-                body.setVelocityY(-Math.abs(force))
-              }
-            }
-            break
-          }
-          case 'log': {
-            console.log('[Game]', this.resolvePort(nodeId, 'msg', ctx))
-            break
-          }
-          case 'set-variable': {
-            const name = String(this.resolvePort(nodeId, 'name', ctx))
-            const value = this.resolvePort(nodeId, 'value', ctx)
-            this.variables.set(name, value)
-            break
-          }
-          case 'show-text': {
-            const target = String(node.props.target ?? '')
-            const text = String(this.resolvePort(nodeId, 'text', ctx))
-            const s = this.sprites.get(target)
-            if (s instanceof Phaser.GameObjects.Text) s.setText(text)
-            break
-          }
-          case 'set-position': {
-            const target = String(this.resolvePort(nodeId, 'target', ctx))
-            const x = Number(this.resolvePort(nodeId, 'x', ctx))
-            const y = Number(this.resolvePort(nodeId, 'y', ctx))
-            const s = this.sprites.get(target)
-            if (s) {
-              const body = getBody(s)
-              // reset() moves both body and game object atomically
-              if (body instanceof Phaser.Physics.Arcade.Body) body.reset(x, y)
-              else (s as Phaser.GameObjects.Image).setPosition(x, y)
-            }
-            break
-          }
-          case 'set-visible': {
-            const target = String(this.resolvePort(nodeId, 'target', ctx))
-            const mode = String(node.props.visible ?? 'pokaz')
-            const s = this.sprites.get(target)
-            if (s) {
-              const go = s as Phaser.GameObjects.Image
-              if (mode === 'pokaz') go.setVisible(true)
-              else if (mode === 'ukryj') go.setVisible(false)
-              else go.setVisible(!go.visible)
-            }
-            break
-          }
-          case 'if-condition': {
-            const a = Number(this.resolvePort(nodeId, 'a', ctx))
-            const b = Number(this.resolvePort(nodeId, 'b', ctx))
-            const op = String(node.props.operator ?? '>')
-            let result = false
-            if (op === '>') result = a > b
-            else if (op === '<') result = a < b
-            else if (op === '>=') result = a >= b
-            else if (op === '<=') result = a <= b
-            else if (op === '==') result = a === b
-            else if (op === '!=') result = a !== b
-            const branch = result ? 'exec-true' : 'exec-false'
-            const branchConn = this.graph.connections.find(c => c.fromNode === nodeId && c.fromPort === branch)
-            if (branchConn) this.executeNode(branchConn.toNode, ctx)
-            return
-          }
-          case 'wait': {
-            const seconds = Number(this.resolvePort(nodeId, 'seconds', ctx))
-            const next = this.graph.connections.find(c => c.fromNode === nodeId && c.fromPort === 'exec')
-            if (next) this.time.delayedCall(seconds * 1000, () => this.executeNode(next.toNode, ctx))
-            return
-          }
-        }
-
-        // Follow exec chain
-        const execOut = this.graph.connections.find(c => c.fromNode === nodeId && c.fromPort === 'exec')
-        if (execOut) this.executeNode(execOut.toNode, ctx)
       }
     }
 

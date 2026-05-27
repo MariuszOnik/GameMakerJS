@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
-  base: '/GameMakerJS/', // <-- TUTAJ WPISZ TĘ LINIJKĘ
+  base: '/GameMakerJS/', 
   plugins: [
     VitePWA({
       strategies: 'generateSW', // Wymuszamy generowanie Service Workera
@@ -24,6 +24,9 @@ export default defineConfig({
         ]
       },
       workbox: {
+        // Zwiększamy limit cache z 2MB do 6MB, aby zmieścić wbudowany kompilator TypeScript (ok. 4.87 MB)
+        maximumFileSizeToCacheInBytes: 6291456,
+
         // Dodajemy './index.html' do listy, żeby na pewno wskoczył do pamięci podręcznej
         globPatterns: ['**/*.{js,css,html,svg,png,woff2,json}', './index.html'], 
         runtimeCaching: [
