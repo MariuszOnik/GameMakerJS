@@ -388,13 +388,21 @@ function renderAssetsGrid() {
     card.innerHTML = `
       <img src="${asset.dataUrl}" class="asset-thumb" />
       <div class="asset-name">${asset.name}</div>
-      <button class="asset-delete" data-key="${asset.key}" title="Usuń">✕</button>
+      <button class="asset-delete" title="Usuń">✕</button>
+      ${!assetPickerCallback ? `<button class="asset-add-scene" title="Dodaj do sceny">➕ Do sceny</button>` : ''}
     `
     card.querySelector('.asset-delete')?.addEventListener('click', e => {
       e.stopPropagation()
       if (!confirm(`Usunąć "${asset.name}"?`)) return
       deleteAsset(asset.key)
       renderAssetsGrid()
+    })
+    card.querySelector('.asset-add-scene')?.addEventListener('click', e => {
+      e.stopPropagation()
+      const obj = sceneEditor?.addObject('sprite')
+      if (obj) sceneEditor?.updateObjectProp(obj.id, 'assetKey', asset.key)
+      closeAssetsModal()
+      switchTab('scene')
     })
     if (assetPickerCallback) {
       card.addEventListener('click', () => {

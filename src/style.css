@@ -693,6 +693,19 @@ select.node-input-field { cursor: pointer; }
   display: none;
 }
 .asset-card:hover .asset-delete { display: block; }
+.asset-add-scene {
+  display: none;
+  width: 100%;
+  padding: 5px;
+  font-size: 11px;
+  background: var(--accent-dim);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.asset-card:hover .asset-add-scene { display: block; }
+.asset-add-scene:hover { background: var(--accent); }
 
 /* ── Project manager modal ────────────────────────────── */
 #modal-backdrop {
