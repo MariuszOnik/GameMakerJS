@@ -168,7 +168,14 @@ export class NodeEditor {
     // Header
     const header = document.createElement('div')
     header.className = 'node-header'
-    header.innerHTML = `<span>${def.icon}</span><span>${def.label}</span>`
+    header.innerHTML = `<span>${def.icon}</span><span class="node-title">${def.label}</span>`
+    const btnDel = document.createElement('button')
+    btnDel.className = 'node-delete-btn'
+    btnDel.textContent = '✕'
+    btnDel.title = 'Usuń węzeł'
+    btnDel.addEventListener('click', e => { e.stopPropagation(); this.removeNode(node.id) })
+    btnDel.addEventListener('touchend', e => { e.stopPropagation(); this.removeNode(node.id) })
+    header.appendChild(btnDel)
     el.appendChild(header)
 
     // Body: inputs + props + outputs
@@ -362,6 +369,17 @@ export class NodeEditor {
   private bezierPath(x1: number, y1: number, x2: number, y2: number): string {
     const dx = Math.abs(x2 - x1) * 0.5 + 40
     return `M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}`
+  }
+
+  removeNode(id: string) {
+    const node = this.nodes.get(id)
+    if (!node) return
+    // Remove all connections involving this node
+    const toRemove = this.connections.filter(c => c.fromNode === id || c.toNode === id)
+    toRemove.forEach(c => this.removeConnection(c.id))
+    // Remove DOM element
+    node.el?.remove()
+    this.nodes.delete(id)
   }
 
   removeConnection(id: string) {

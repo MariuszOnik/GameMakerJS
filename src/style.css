@@ -224,6 +224,17 @@ button { cursor: pointer; border: none; background: none; color: inherit; font: 
   color: var(--accent);
   margin-bottom: 8px;
 }
+.btn-danger {
+  width: 100%;
+  padding: 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #ef4444;
+  border: 1px solid rgba(239,68,68,0.3);
+  background: rgba(239,68,68,0.08);
+  transition: background 0.15s;
+}
+.btn-danger:hover { background: rgba(239,68,68,0.2); }
 
 /* ── Node editor ──────────────────────────────────────── */
 #node-editor-container {
@@ -268,7 +279,7 @@ button { cursor: pointer; border: none; background: none; color: inherit; font: 
 .rete-node.value-node .node-header { background: #1c1917; }
 
 .node-header {
-  padding: 8px 12px;
+  padding: 8px 10px 8px 12px;
   border-radius: 8px 8px 0 0;
   display: flex;
   align-items: center;
@@ -279,6 +290,21 @@ button { cursor: pointer; border: none; background: none; color: inherit; font: 
   touch-action: none;
   user-select: none;
 }
+.node-title { flex: 1; }
+.node-delete-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+.node-delete-btn:hover { background: rgba(239,68,68,0.3); color: #ef4444; }
 .node-header:active { cursor: grabbing; }
 
 .node-body { padding: 6px 0; }

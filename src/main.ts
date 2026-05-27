@@ -46,6 +46,7 @@ function initSceneEditor() {
       <div class="inspector-row"><label>X</label><input type="number" id="insp-x" value="${Math.round(obj.x)}" /></div>
       <div class="inspector-row"><label>Y</label><input type="number" id="insp-y" value="${Math.round(obj.y)}" /></div>
       ${obj.type === 'text' ? `<div class="inspector-row"><label>Tekst</label><input type="text" id="insp-txt" value="${obj.text ?? ''}" /></div>` : ''}
+      <div class="inspector-row"><button id="btn-delete-obj" class="btn-danger">🗑 Usuń obiekt</button></div>
     `
     props.querySelector<HTMLInputElement>('#insp-x')?.addEventListener('change', e =>
       sceneEditor?.updateObjectProp(obj.id, 'x', parseFloat((e.target as HTMLInputElement).value)))
@@ -53,6 +54,8 @@ function initSceneEditor() {
       sceneEditor?.updateObjectProp(obj.id, 'y', parseFloat((e.target as HTMLInputElement).value)))
     props.querySelector<HTMLInputElement>('#insp-txt')?.addEventListener('change', e =>
       sceneEditor?.updateObjectProp(obj.id, 'text', (e.target as HTMLInputElement).value))
+    props.querySelector('#btn-delete-obj')?.addEventListener('click', () =>
+      sceneEditor?.removeObject(obj.id))
   })
 
   document.querySelectorAll<HTMLButtonElement>('.tool-btn[data-tool]').forEach(btn => {
@@ -65,6 +68,14 @@ function initSceneEditor() {
 
   document.getElementById('btn-add-sprite')?.addEventListener('click', () => sceneEditor?.addObject('sprite'))
   document.getElementById('btn-add-text')?.addEventListener('click', () => sceneEditor?.addObject('text'))
+
+  // Delete selected object with keyboard (Delete / Backspace)
+  window.addEventListener('keydown', e => {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && document.activeElement?.tagName !== 'INPUT') {
+      const btn = document.getElementById('btn-delete-obj') as HTMLButtonElement | null
+      btn?.click()
+    }
+  })
 }
 
 // ── Node editor ────────────────────────────────────────────

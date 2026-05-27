@@ -12,8 +12,8 @@
 
 ## Faza 1 – Fundamenty (brakujące podstawy)
 
-- [ ] Usuń obiekt ze sceny – przycisk 🗑 w inspektorze lub klawisz Delete
-- [ ] Usuń węzeł z grafu – długie przytrzymanie / przycisk X na węźle
+- [x] Usuń obiekt ze sceny – przycisk 🗑 w inspektorze lub klawisz Delete
+- [x] Usuń węzeł z grafu – przycisk ✕ na headerze węzła, usuwa też połączenia
 - [ ] Zmień nazwę obiektu – edytowalne pole "label" w inspektorze
 - [ ] Duplikuj obiekt – kopiuj/wklej sprite ze sceną
 - [ ] Undo / Redo – Ctrl+Z / Ctrl+Y, historia zmian

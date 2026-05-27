@@ -187,6 +187,19 @@ export class SceneEditor {
     return this.objects
   }
 
+  removeObject(id: string) {
+    const idx = this.objects.findIndex(o => o.id === id)
+    if (idx === -1) return
+    const obj = this.objects[idx]
+    if (obj.phaserObj) {
+      const lbl = (obj.phaserObj as Phaser.GameObjects.Rectangle).getData?.('labelRef') as Phaser.GameObjects.Text | undefined
+      lbl?.destroy()
+      ;(obj.phaserObj as Phaser.GameObjects.GameObject).destroy()
+    }
+    this.objects.splice(idx, 1)
+    if (this.selectedId === id) this.select(null)
+  }
+
   updateObjectProp(id: string, prop: keyof SceneObject, value: unknown) {
     const obj = this.objects.find(o => o.id === id)
     if (!obj) return
