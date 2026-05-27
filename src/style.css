@@ -164,29 +164,6 @@ button { cursor: pointer; border: none; background: none; color: inherit; font: 
   background: var(--border);
   margin: 0 4px;
 }
-.snap-form {
-  display: none;
-  align-items: center;
-  gap: 4px;
-}
-.snap-form.visible { display: flex; }
-.snap-label {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-.snap-input {
-  width: 44px;
-  padding: 2px 4px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text);
-  font-size: 11px;
-  text-align: center;
-}
 
 /* ── Scene editor ─────────────────────────────────────── */
 #scene-viewport {
@@ -246,6 +223,38 @@ button { cursor: pointer; border: none; background: none; color: inherit; font: 
   font-weight: 600;
   color: var(--accent);
   margin-bottom: 8px;
+}
+.inspector-section-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 10px 0 4px;
+}
+.insp-number {
+  width: 64px;
+  padding: 3px 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 12px;
+  text-align: right;
+}
+.snap-toggle {
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.snap-toggle.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(99,102,241,0.12);
 }
 .btn-secondary {
   flex: 1;

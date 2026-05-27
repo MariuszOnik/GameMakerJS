@@ -80,7 +80,6 @@ function initSceneEditor() {
   document.getElementById('btn-redo')?.addEventListener('click', () => sceneEditor?.redo())
 
   const btnSnap = document.getElementById('btn-snap')!
-  const snapForm = document.getElementById('snap-form')!
   const snapXInput = document.getElementById('snap-x') as HTMLInputElement
   const snapYInput = document.getElementById('snap-y') as HTMLInputElement
   let snapActive = false
@@ -92,7 +91,7 @@ function initSceneEditor() {
   btnSnap.addEventListener('click', () => {
     snapActive = !snapActive
     btnSnap.classList.toggle('active', snapActive)
-    snapForm.classList.toggle('visible', snapActive)
+    btnSnap.textContent = snapActive ? 'Włączony' : 'Wyłączony'
     applySnap()
   })
   snapXInput.addEventListener('change', applySnap)
