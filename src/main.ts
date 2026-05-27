@@ -7,6 +7,7 @@ import {
   getAllProjects, getCurrentId, saveProject, loadProject,
   deleteProject, createNewId, setCurrentId, formatDate
 } from './projects'
+import { getAllAssets, addAsset, deleteAsset } from './assets-store'
 
 // ── Module instances ───────────────────────────────────────
 let sceneEditor: SceneEditor | null = null
@@ -51,6 +52,7 @@ function initSceneEditor() {
       <div class="inspector-row"><label>X</label>    <input type="number" id="insp-x"     value="${Math.round(obj.x)}" /></div>
       <div class="inspector-row"><label>Y</label>    <input type="number" id="insp-y"     value="${Math.round(obj.y)}" /></div>
       ${obj.type === 'text' ? `<div class="inspector-row"><label>Tekst</label><input type="text" id="insp-txt" value="${obj.text ?? ''}" /></div>` : ''}
+      ${obj.type !== 'text' ? `<div class="inspector-row"><label>Obraz</label><button id="btn-pick-asset" class="btn-secondary" style="flex:1;font-size:11px">${obj.assetKey ? getAllAssets().find(a => a.key === obj.assetKey)?.name ?? 'Zmień…' : 'Brak – wybierz…'}</button></div>` : ''}
       <div class="inspector-row" style="gap:6px">
         <button id="btn-duplicate-obj" class="btn-secondary">⧉ Duplikuj</button>
         <button id="btn-delete-obj" class="btn-danger">🗑 Usuń</button>
@@ -66,6 +68,8 @@ function initSceneEditor() {
       sceneEditor?.updateObjectProp(obj.id, 'text', (e.target as HTMLInputElement).value))
     props.querySelector('#btn-close-inspector')?.addEventListener('click', () =>
       sceneEditor?.select(null))
+    props.querySelector('#btn-pick-asset')?.addEventListener('click', () =>
+      openAssetsModal(key => sceneEditor?.updateObjectProp(obj.id, 'assetKey', key)))
     props.querySelector('#btn-duplicate-obj')?.addEventListener('click', () =>
       sceneEditor?.duplicateObject(obj.id))
     props.querySelector('#btn-delete-obj')?.addEventListener('click', () =>
@@ -243,7 +247,7 @@ function setNameInput(name: string) {
 function save(showFeedback = true) {
   const objects = sceneEditor?.getObjects().map(o => ({
     id: o.id, type: o.type, x: o.x, y: o.y,
-    width: o.width, height: o.height, label: o.label, color: o.color, text: o.text
+    width: o.width, height: o.height, label: o.label, color: o.color, text: o.text, assetKey: o.assetKey
   })) ?? []
   const graph = nodeEditor?.serialize() ?? '{}'
 
@@ -366,6 +370,76 @@ document.getElementById('btn-new')?.addEventListener('click', () => {
 
 // Auto-save every 30s
 setInterval(() => save(false), 30_000)
+
+// ── Assets modal ───────────────────────────────────────────
+let assetPickerCallback: ((key: string) => void) | null = null
+
+function renderAssetsGrid() {
+  const grid = document.getElementById('assets-grid')!
+  const assets = getAllAssets()
+  if (!assets.length) {
+    grid.innerHTML = '<div class="assets-empty">Brak wgranych obrazów.<br>Kliknij „Wgraj obraz" poniżej.</div>'
+    return
+  }
+  grid.innerHTML = ''
+  for (const asset of assets) {
+    const card = document.createElement('div')
+    card.className = 'asset-card' + (assetPickerCallback ? ' pickable' : '')
+    card.innerHTML = `
+      <img src="${asset.dataUrl}" class="asset-thumb" />
+      <div class="asset-name">${asset.name}</div>
+      <button class="asset-delete" data-key="${asset.key}" title="Usuń">✕</button>
+    `
+    card.querySelector('.asset-delete')?.addEventListener('click', e => {
+      e.stopPropagation()
+      if (!confirm(`Usunąć "${asset.name}"?`)) return
+      deleteAsset(asset.key)
+      renderAssetsGrid()
+    })
+    if (assetPickerCallback) {
+      card.addEventListener('click', () => {
+        assetPickerCallback!(asset.key)
+        assetPickerCallback = null
+        closeAssetsModal()
+      })
+    }
+    grid.appendChild(card)
+  }
+}
+
+function openAssetsModal(pickerCb?: (key: string) => void) {
+  assetPickerCallback = pickerCb ?? null
+  renderAssetsGrid()
+  document.getElementById('modal-assets-backdrop')!.classList.remove('hidden')
+}
+function closeAssetsModal() {
+  document.getElementById('modal-assets-backdrop')!.classList.add('hidden')
+  assetPickerCallback = null
+}
+
+document.getElementById('btn-assets')?.addEventListener('click', () => openAssetsModal())
+document.getElementById('modal-assets-close')?.addEventListener('click', closeAssetsModal)
+document.getElementById('modal-assets-backdrop')?.addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeAssetsModal()
+})
+
+const fileInput = document.getElementById('asset-file-input') as HTMLInputElement
+fileInput?.addEventListener('change', () => {
+  const file = fileInput.files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = () => {
+    try {
+      addAsset(file.name, reader.result as string)
+      sceneEditor?.reloadWithAssets()
+      renderAssetsGrid()
+    } catch {
+      alert('Nie można wgrać – za mało miejsca w pamięci przeglądarki.')
+    }
+  }
+  reader.readAsDataURL(file)
+  fileInput.value = ''
+})
 
 // ── Boot ───────────────────────────────────────────────────
 initSceneEditor()

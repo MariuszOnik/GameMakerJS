@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { SceneObject } from '../editor/scene-editor'
+import { getAllAssets } from '../assets-store'
 
 interface GraphData {
   nodes: Array<{ id: string; type: string; x: number; y: number; props: Record<string, string | number> }>
@@ -30,6 +31,12 @@ export class GameRunner {
 
       constructor() { super({ key: 'PlayScene' }) }
 
+      preload() {
+        for (const asset of getAllAssets()) {
+          this.load.image(asset.key, asset.dataUrl)
+        }
+      }
+
       create() {
         this.graph = graphData
 
@@ -38,6 +45,10 @@ export class GameRunner {
             const t = this.add.text(obj.x, obj.y, obj.text ?? 'Hello', { fontSize: '18px', color: '#fff' })
             t.setOrigin(0.5)
             this.sprites.set(obj.label, t)
+          } else if (obj.assetKey && this.textures.exists(obj.assetKey)) {
+            const img = this.add.image(obj.x, obj.y, obj.assetKey)
+            img.setDisplaySize(obj.width ?? 64, obj.height ?? 64)
+            this.sprites.set(obj.label, img)
           } else {
             const r = this.add.rectangle(obj.x, obj.y, obj.width ?? 64, obj.height ?? 64, obj.color ?? 0x4ade80)
             this.sprites.set(obj.label, r)

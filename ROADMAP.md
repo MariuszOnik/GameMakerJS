@@ -36,11 +36,11 @@
 
 ## Faza 3 – System zasobów (Assets)
 
-- [ ] Upload PNG – FileReader API → Phaser texture
+- [x] Upload PNG – FileReader API → Phaser texture
 - [ ] Sprite sheet – podziel obraz na klatki animacji
 - [ ] Animacje – węzeł "Odtwórz animację" z klatkami
 - [ ] Dźwięki – upload MP3/OGG + węzeł "Zagraj dźwięk"
-- [ ] Panel zasobów – zakładka Assets z miniaturami
+- [x] Panel zasobów – modal 🖼 z miniaturami, picker w inspektorze
 
 ---
 

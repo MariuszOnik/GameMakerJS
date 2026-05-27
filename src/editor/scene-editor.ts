@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { getAllAssets } from '../assets-store'
 
 export interface SceneObject {
   id: string
@@ -10,6 +11,7 @@ export interface SceneObject {
   label: string
   color?: number
   text?: string
+  assetKey?: string
   phaserObj?: Phaser.GameObjects.GameObject
 }
 
@@ -53,7 +55,9 @@ export class SceneEditor {
       }
 
       preload() {
-        // Placeholder colored rect for sprites (no external assets needed)
+        for (const asset of getAllAssets()) {
+          this.load.image(asset.key, asset.dataUrl)
+        }
       }
 
       create() {
@@ -268,6 +272,13 @@ export class SceneEditor {
       })
       t.setOrigin(0.5)
       go = t
+    } else if (obj.assetKey && scene.textures.exists(obj.assetKey)) {
+      const img = scene.add.image(obj.x, obj.y, obj.assetKey)
+      img.setDisplaySize(obj.width ?? 64, obj.height ?? 64)
+      const label = scene.add.text(obj.x, obj.y, obj.label, { fontSize: '11px', color: '#fff', backgroundColor: '#0008', padding: { x: 3, y: 1 } })
+      label.setOrigin(0.5)
+      img.setData('labelRef', label)
+      go = img
     } else {
       const gfx = scene.add.rectangle(obj.x, obj.y, obj.width ?? 64, obj.height ?? 64, obj.color ?? 0x4ade80)
       const label = scene.add.text(obj.x, obj.y, obj.label, { fontSize: '12px', color: '#fff' })
@@ -297,12 +308,13 @@ export class SceneEditor {
         if (!dragSnapped) { this.saveSnapshot(); dragSnapped = true }
         obj.x = this.snap(Math.round(p.worldX - dragStartX), this.snapX)
         obj.y = this.snap(Math.round(p.worldY - dragStartY), this.snapY)
-        if (go instanceof Phaser.GameObjects.Rectangle) {
+        if (go instanceof Phaser.GameObjects.Text) {
           go.setPosition(obj.x, obj.y)
-          const lbl = go.getData('labelRef') as Phaser.GameObjects.Text | undefined
+        } else {
+          const anyGo = go as Phaser.GameObjects.Rectangle
+          anyGo.setPosition(obj.x, obj.y)
+          const lbl = anyGo.getData?.('labelRef') as Phaser.GameObjects.Text | undefined
           lbl?.setPosition(obj.x, obj.y)
-        } else if (go instanceof Phaser.GameObjects.Text) {
-          go.setPosition(obj.x, obj.y)
         }
         this.onSelectCallback?.(obj)
       }
@@ -345,14 +357,23 @@ export class SceneEditor {
     this.saveSnapshot()
     ;(obj as unknown as Record<string, unknown>)[prop] = value
 
-    if (obj.phaserObj instanceof Phaser.GameObjects.Rectangle) {
-      obj.phaserObj.setPosition(obj.x, obj.y)
-      const lbl = obj.phaserObj.getData('labelRef') as Phaser.GameObjects.Text | undefined
-      lbl?.setPosition(obj.x, obj.y)
-      if (prop === 'label') lbl?.setText(String(value))
-    } else if (obj.phaserObj instanceof Phaser.GameObjects.Text) {
+    if (prop === 'assetKey') {
+      const lbl = (obj.phaserObj as Phaser.GameObjects.Rectangle)?.getData?.('labelRef') as Phaser.GameObjects.Text | undefined
+      lbl?.destroy()
+      obj.phaserObj?.destroy()
+      obj.phaserObj = undefined
+      if (this.scene) this.spawnPhaserObj(obj)
+      return
+    }
+    if (obj.phaserObj instanceof Phaser.GameObjects.Text) {
       obj.phaserObj.setPosition(obj.x, obj.y)
       if (prop === 'text') obj.phaserObj.setText(String(value))
+    } else if (obj.phaserObj) {
+      const anyGo = obj.phaserObj as Phaser.GameObjects.Rectangle
+      anyGo.setPosition(obj.x, obj.y)
+      const lbl = anyGo.getData?.('labelRef') as Phaser.GameObjects.Text | undefined
+      lbl?.setPosition(obj.x, obj.y)
+      if (prop === 'label') lbl?.setText(String(value))
     }
   }
 
@@ -390,6 +411,20 @@ export class SceneEditor {
     const w = this.container.clientWidth
     const h = this.container.clientHeight
     this.game.scale.resize(w, h)
+  }
+
+  reloadWithAssets() {
+    const saved = this.objects.map(({ phaserObj: _p, ...rest }) => ({ ...rest }))
+    const selId = this.selectedId
+    this.game.destroy(true)
+    this.objects = []
+    this.selectedId = null
+    this.onReadyCallback = () => {
+      this.loadScene(saved)
+      if (selId) this.select(selId)
+      this.onReadyCallback = undefined
+    }
+    this.init()
   }
 
   destroy() {
