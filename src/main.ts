@@ -87,6 +87,14 @@ function initSceneEditor() {
       e.preventDefault()
       document.getElementById('btn-duplicate-obj')?.click()
     }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault()
+      sceneEditor?.undo()
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+      e.preventDefault()
+      sceneEditor?.redo()
+    }
   })
 }
 

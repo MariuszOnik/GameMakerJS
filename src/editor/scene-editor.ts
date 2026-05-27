@@ -15,6 +15,8 @@ export interface SceneObject {
 
 type Tool = 'select' | 'move' | 'add'
 
+type Snapshot = Omit<SceneObject, 'phaserObj'>[]
+
 export class SceneEditor {
   private game!: Phaser.Game
   private scene!: Phaser.Scene
@@ -25,6 +27,8 @@ export class SceneEditor {
   private onSelectCallback?: (obj: SceneObject | null) => void
   private onReadyCallback?: () => void
   private idCounter = 0
+  private undoStack: Snapshot[] = []
+  private redoStack: Snapshot[] = []
 
   constructor(container: HTMLElement) {
     this.container = container
@@ -144,9 +148,48 @@ export class SceneEditor {
     this.currentTool = tool
   }
 
+  private saveSnapshot() {
+    const snap: Snapshot = this.objects.map(({ phaserObj: _p, ...rest }) => ({ ...rest }))
+    this.undoStack.push(snap)
+    if (this.undoStack.length > 50) this.undoStack.shift()
+    this.redoStack = []
+  }
+
+  private restoreSnapshot(snap: Snapshot) {
+    this.objects.forEach(o => {
+      if (o.phaserObj) {
+        const lbl = (o.phaserObj as Phaser.GameObjects.Rectangle).getData?.('labelRef') as Phaser.GameObjects.Text | undefined
+        lbl?.destroy()
+        ;(o.phaserObj as Phaser.GameObjects.GameObject).destroy()
+      }
+    })
+    this.objects = snap.map(o => ({ ...o }))
+    this.idCounter = this.objects.reduce((max, o) => {
+      const n = parseInt(o.id.replace('obj_', '')) || 0
+      return Math.max(max, n)
+    }, this.idCounter)
+    if (this.scene) this.objects.forEach(obj => this.spawnPhaserObj(obj))
+    this.select(null)
+  }
+
+  undo() {
+    if (!this.undoStack.length) return
+    const current: Snapshot = this.objects.map(({ phaserObj: _p, ...rest }) => ({ ...rest }))
+    this.redoStack.push(current)
+    this.restoreSnapshot(this.undoStack.pop()!)
+  }
+
+  redo() {
+    if (!this.redoStack.length) return
+    const current: Snapshot = this.objects.map(({ phaserObj: _p, ...rest }) => ({ ...rest }))
+    this.undoStack.push(current)
+    this.restoreSnapshot(this.redoStack.pop()!)
+  }
+
   duplicateObject(id: string) {
     const src = this.objects.find(o => o.id === id)
     if (!src) return
+    this.saveSnapshot()
     const copy: SceneObject = {
       ...src,
       id: `obj_${++this.idCounter}`,
@@ -162,6 +205,7 @@ export class SceneEditor {
   }
 
   addObject(type: SceneObject['type']) {
+    this.saveSnapshot()
     const cam = this.scene?.cameras?.main
     const cx = cam ? cam.scrollX + cam.width / 2 : 200
     const cy = cam ? cam.scrollY + cam.height / 2 : 200
@@ -214,15 +258,18 @@ export class SceneEditor {
     })
 
     let dragStartX = 0, dragStartY = 0
+    let dragSnapped = false
     go.on('pointerdown', (p: Phaser.Input.Pointer) => {
       dragStartX = p.worldX - obj.x
       dragStartY = p.worldY - obj.y
+      dragSnapped = false
     })
 
     const scene2 = scene as unknown as Phaser.Scene & { input: Phaser.Input.InputPlugin }
     scene2.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       // Drag object only in select mode
       if (p.isDown && this.selectedId === obj.id && this.currentTool === 'select') {
+        if (!dragSnapped) { this.saveSnapshot(); dragSnapped = true }
         obj.x = Math.round(p.worldX - dragStartX)
         obj.y = Math.round(p.worldY - dragStartY)
         if (go instanceof Phaser.GameObjects.Rectangle) {
@@ -256,6 +303,7 @@ export class SceneEditor {
   removeObject(id: string) {
     const idx = this.objects.findIndex(o => o.id === id)
     if (idx === -1) return
+    this.saveSnapshot()
     const obj = this.objects[idx]
     if (obj.phaserObj) {
       const lbl = (obj.phaserObj as Phaser.GameObjects.Rectangle).getData?.('labelRef') as Phaser.GameObjects.Text | undefined
@@ -269,6 +317,7 @@ export class SceneEditor {
   updateObjectProp(id: string, prop: keyof SceneObject, value: unknown) {
     const obj = this.objects.find(o => o.id === id)
     if (!obj) return
+    this.saveSnapshot()
     ;(obj as unknown as Record<string, unknown>)[prop] = value
 
     if (obj.phaserObj instanceof Phaser.GameObjects.Rectangle) {
