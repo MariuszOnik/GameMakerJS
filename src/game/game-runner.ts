@@ -146,6 +146,23 @@ export class GameRunner {
             const name = String(node.props.name ?? '')
             return this.variables.get(name) ?? 0
           }
+          case 'get-property': {
+            const target = String(node.props.target ?? '')
+            const prop = String(node.props.prop ?? 'x')
+            const s = this.sprites.get(target)
+            if (!s) return 0
+            const go = s as Phaser.GameObjects.Image
+            if (prop === 'x') return go.x
+            if (prop === 'y') return go.y
+            if (prop === 'width') return go.width
+            if (prop === 'height') return go.height
+            if (prop === 'vx' || prop === 'vy') {
+              const body = getBody(s)
+              if (body instanceof Phaser.Physics.Arcade.Body)
+                return prop === 'vx' ? body.velocity.x : body.velocity.y
+            }
+            return 0
+          }
           default: return node.props[portId] ?? 0
         }
       }

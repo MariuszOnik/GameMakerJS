@@ -176,6 +176,16 @@ export const NODE_DEFS: Record<string, NodeDef> = {
 
   // ── Faza 4 ─────────────────────────────────────────────
 
+  'get-property': {
+    type: 'get-property', label: 'Pobierz właściwość', icon: '🎯', category: 'value',
+    inputs: [],
+    outputs: [{ id: 'value', label: 'Wartość', type: 'number' }],
+    props: {
+      target: { label: 'Sprite ID', defaultValue: 'Sprite1' },
+      prop: { label: 'Właściwość', defaultValue: 'x', options: ['x', 'y', 'vx', 'vy', 'width', 'height'] }
+    }
+  },
+
   'jump': {
     type: 'jump', label: 'Skocz', icon: '🦘', category: 'action',
     inputs: [
