@@ -3,7 +3,7 @@ import { getAllAssets } from '../assets-store'
 
 export interface SceneObject {
   id: string
-  type: 'sprite' | 'text' | 'rect'
+  type: 'sprite' | 'text' | 'rect' | 'empty'
   x: number
   y: number
   width?: number

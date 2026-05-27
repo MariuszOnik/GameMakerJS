@@ -529,6 +529,22 @@ sceneEditor!.onReady(() => {
 
 window.addEventListener('resize', () => sceneEditor?.resize())
 
+// Na samym dole pliku (np. src/main.ts lub index.ts)
+// @ts-ignore
+import { registerSW } from 'virtual:pwa-register'
+
+if ('serviceWorker' in navigator) {
+  registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      console.log('[PWA] Dostępna nowa wersja! Przeładuj aplikację.')
+    },
+    onOfflineReady() {
+      console.log('[PWA] Aplikacja w pełni gotowa do pracy OFFLINE!')
+    }
+  })
+}
+
 // ── Help modal ─────────────────────────────────────────────
 function openHelp() { document.getElementById('modal-help-backdrop')!.classList.remove('hidden') }
 function closeHelp() { document.getElementById('modal-help-backdrop')!.classList.add('hidden') }
