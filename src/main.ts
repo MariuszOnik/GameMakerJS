@@ -49,8 +49,11 @@ function initSceneEditor() {
         <button id="btn-close-inspector" class="inspector-close" title="Zamknij">✕</button>
       </div>
       <div class="inspector-row"><label>Nazwa</label><input type="text"   id="insp-label" value="${obj.label}" /></div>
-      <div class="inspector-row"><label>X</label>    <input type="number" id="insp-x"     value="${Math.round(obj.x)}" /></div>
-      <div class="inspector-row"><label>Y</label>    <input type="number" id="insp-y"     value="${Math.round(obj.y)}" /></div>
+      <div class="inspector-row"><label>X</label><input type="number" id="insp-x" value="${Math.round(obj.x)}" /></div>
+      <div class="inspector-row"><label>Y</label><input type="number" id="insp-y" value="${Math.round(obj.y)}" /></div>
+      ${obj.type !== 'text' ? `
+      <div class="inspector-row"><label>W</label><input type="number" id="insp-w" value="${obj.width ?? 64}" /></div>
+      <div class="inspector-row"><label>H</label><input type="number" id="insp-h" value="${obj.height ?? 64}" /></div>` : ''}
       ${obj.type === 'text' ? `<div class="inspector-row"><label>Tekst</label><input type="text" id="insp-txt" value="${obj.text ?? ''}" /></div>` : ''}
       ${obj.type !== 'text' ? `<div class="inspector-row"><label>Obraz</label><button id="btn-pick-asset" class="btn-secondary" style="flex:1;font-size:11px">${obj.assetKey ? getAllAssets().find(a => a.key === obj.assetKey)?.name ?? 'Zmień…' : 'Brak – wybierz…'}</button></div>` : ''}
       <div class="inspector-row" style="gap:6px">
@@ -64,6 +67,10 @@ function initSceneEditor() {
       sceneEditor?.updateObjectProp(obj.id, 'x', parseFloat((e.target as HTMLInputElement).value)))
     props.querySelector<HTMLInputElement>('#insp-y')?.addEventListener('change', e =>
       sceneEditor?.updateObjectProp(obj.id, 'y', parseFloat((e.target as HTMLInputElement).value)))
+    props.querySelector<HTMLInputElement>('#insp-w')?.addEventListener('change', e =>
+      sceneEditor?.updateObjectProp(obj.id, 'width', parseFloat((e.target as HTMLInputElement).value)))
+    props.querySelector<HTMLInputElement>('#insp-h')?.addEventListener('change', e =>
+      sceneEditor?.updateObjectProp(obj.id, 'height', parseFloat((e.target as HTMLInputElement).value)))
     props.querySelector<HTMLInputElement>('#insp-txt')?.addEventListener('change', e =>
       sceneEditor?.updateObjectProp(obj.id, 'text', (e.target as HTMLInputElement).value))
     props.querySelector('#btn-close-inspector')?.addEventListener('click', () =>

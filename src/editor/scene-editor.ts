@@ -362,6 +362,15 @@ export class SceneEditor {
       lbl?.destroy()
       obj.phaserObj?.destroy()
       obj.phaserObj = undefined
+      // Auto-size to natural texture dimensions
+      if (typeof value === 'string' && value) {
+        const scene = this.scene as unknown as Phaser.Scene
+        if (scene?.textures.exists(value)) {
+          const src = scene.textures.get(value).source[0]
+          obj.width = src.width
+          obj.height = src.height
+        }
+      }
       if (this.scene) this.spawnPhaserObj(obj)
       return
     }
@@ -374,6 +383,11 @@ export class SceneEditor {
       const lbl = anyGo.getData?.('labelRef') as Phaser.GameObjects.Text | undefined
       lbl?.setPosition(obj.x, obj.y)
       if (prop === 'label') lbl?.setText(String(value))
+      if (prop === 'width' || prop === 'height') {
+        const w = obj.width ?? 64, h = obj.height ?? 64
+        if (anyGo instanceof Phaser.GameObjects.Rectangle) anyGo.setSize(w, h)
+        else (anyGo as unknown as Phaser.GameObjects.Image).setDisplaySize(w, h)
+      }
     }
   }
 
