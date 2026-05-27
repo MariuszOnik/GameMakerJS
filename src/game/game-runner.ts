@@ -7,6 +7,12 @@ interface GraphData {
   connections: Array<{ fromNode: string; fromPort: string; toNode: string; toPort: string }>
 }
 
+type ArcadeBody = Phaser.Physics.Arcade.Body | Phaser.Physics.Arcade.StaticBody
+
+function getBody(go: Phaser.GameObjects.GameObject): ArcadeBody | null {
+  return (go as unknown as { body?: ArcadeBody }).body ?? null
+}
+
 export class GameRunner {
   private game: Phaser.Game | null = null
   private container: HTMLElement
@@ -40,18 +46,49 @@ export class GameRunner {
       create() {
         this.graph = graphData
 
+        const dynamicBodies: Phaser.GameObjects.GameObject[] = []
+        const staticBodies: Phaser.GameObjects.GameObject[] = []
+
         for (const obj of objects) {
+          let go: Phaser.GameObjects.GameObject
+
           if (obj.type === 'text') {
             const t = this.add.text(obj.x, obj.y, obj.text ?? 'Hello', { fontSize: '18px', color: '#fff' })
             t.setOrigin(0.5)
-            this.sprites.set(obj.label, t)
+            go = t
           } else if (obj.assetKey && this.textures.exists(obj.assetKey)) {
             const img = this.add.image(obj.x, obj.y, obj.assetKey)
             img.setDisplaySize(obj.width ?? 64, obj.height ?? 64)
-            this.sprites.set(obj.label, img)
+            go = img
           } else {
             const r = this.add.rectangle(obj.x, obj.y, obj.width ?? 64, obj.height ?? 64, obj.color ?? 0x4ade80)
-            this.sprites.set(obj.label, r)
+            go = r
+          }
+
+          this.sprites.set(obj.label, go)
+
+          if (obj.physicsEnabled) {
+            this.physics.add.existing(go, obj.isStatic ?? false)
+            const body = getBody(go)
+            if (body instanceof Phaser.Physics.Arcade.Body) {
+              body.setBounce(obj.bounce ?? 0)
+              body.setAllowGravity(obj.allowGravity !== false)
+              body.setCollideWorldBounds(obj.collideWorldBounds ?? false)
+              dynamicBodies.push(go)
+            } else {
+              staticBodies.push(go)
+            }
+            if (obj.cameraFollow) {
+              this.cameras.main.startFollow(go as Phaser.GameObjects.Image)
+            }
+          }
+        }
+
+        // Add colliders: dynamic ↔ static and dynamic ↔ dynamic
+        for (const dyn of dynamicBodies) {
+          for (const stat of staticBodies) this.physics.add.collider(dyn, stat)
+          for (const dyn2 of dynamicBodies) {
+            if (dyn !== dyn2) this.physics.add.collider(dyn, dyn2)
           }
         }
 
@@ -126,6 +163,9 @@ export class GameRunner {
             const s = this.sprites.get(target)
             if (s instanceof Phaser.GameObjects.Rectangle || s instanceof Phaser.GameObjects.Text) {
               s.x += dx; s.y += dy
+            } else if (s) {
+              (s as Phaser.GameObjects.Image).x += dx;
+              (s as Phaser.GameObjects.Image).y += dy
             }
             break
           }
@@ -134,7 +174,24 @@ export class GameRunner {
             const vx = Number(this.resolvePort(nodeId, 'vx', ctx))
             const vy = Number(this.resolvePort(nodeId, 'vy', ctx))
             const s = this.sprites.get(target)
-            if (s) { s.setData('vx', vx); s.setData('vy', vy) }
+            if (s) {
+              const body = getBody(s)
+              if (body instanceof Phaser.Physics.Arcade.Body) {
+                body.setVelocity(vx, vy)
+              }
+            }
+            break
+          }
+          case 'jump': {
+            const target = String(this.resolvePort(nodeId, 'target', ctx))
+            const force = Number(this.resolvePort(nodeId, 'force', ctx))
+            const s = this.sprites.get(target)
+            if (s) {
+              const body = getBody(s)
+              if (body instanceof Phaser.Physics.Arcade.Body && body.blocked.down) {
+                body.setVelocityY(-Math.abs(force))
+              }
+            }
             break
           }
           case 'log': {
@@ -194,6 +251,10 @@ export class GameRunner {
       height: h,
       backgroundColor: '#0a0a18',
       scene: PlayScene,
+      physics: {
+        default: 'arcade',
+        arcade: { gravity: { x: 0, y: 500 }, debug: false }
+      },
       scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }
     })
   }

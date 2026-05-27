@@ -56,6 +56,33 @@ function initSceneEditor() {
       <div class="inspector-row"><label>H</label><input type="number" id="insp-h" value="${obj.height ?? 64}" /></div>` : ''}
       ${obj.type === 'text' ? `<div class="inspector-row"><label>Tekst</label><input type="text" id="insp-txt" value="${obj.text ?? ''}" /></div>` : ''}
       ${obj.type !== 'text' ? `<div class="inspector-row"><label>Obraz</label><button id="btn-pick-asset" class="btn-secondary" style="flex:1;font-size:11px">${obj.assetKey ? getAllAssets().find(a => a.key === obj.assetKey)?.name ?? 'Zmień…' : 'Brak – wybierz…'}</button></div>` : ''}
+      <div class="inspector-section-label">Fizyka</div>
+      <div class="inspector-row">
+        <label>Fizyka</label>
+        <input type="checkbox" id="insp-physics" ${obj.physicsEnabled ? 'checked' : ''} />
+      </div>
+      <div id="physics-extra" class="${obj.physicsEnabled ? '' : 'hidden'}">
+        <div class="inspector-row">
+          <label>Statyczny</label>
+          <input type="checkbox" id="insp-static" ${obj.isStatic ? 'checked' : ''} />
+        </div>
+        <div class="inspector-row">
+          <label>Odbicie</label>
+          <input type="number" id="insp-bounce" class="insp-number" value="${obj.bounce ?? 0}" min="0" max="1" step="0.1" />
+        </div>
+        <div class="inspector-row">
+          <label>Grawitacja</label>
+          <input type="checkbox" id="insp-gravity" ${obj.allowGravity !== false ? 'checked' : ''} />
+        </div>
+        <div class="inspector-row">
+          <label>Granice</label>
+          <input type="checkbox" id="insp-worldbounds" ${obj.collideWorldBounds ? 'checked' : ''} />
+        </div>
+        <div class="inspector-row">
+          <label>Kamera śledzi</label>
+          <input type="checkbox" id="insp-camfollow" ${obj.cameraFollow ? 'checked' : ''} />
+        </div>
+      </div>
       <div class="inspector-row" style="gap:6px">
         <button id="btn-duplicate-obj" class="btn-secondary">⧉ Duplikuj</button>
         <button id="btn-delete-obj" class="btn-danger">🗑 Usuń</button>
@@ -81,6 +108,21 @@ function initSceneEditor() {
       sceneEditor?.duplicateObject(obj.id))
     props.querySelector('#btn-delete-obj')?.addEventListener('click', () =>
       sceneEditor?.removeObject(obj.id))
+    props.querySelector<HTMLInputElement>('#insp-physics')?.addEventListener('change', e => {
+      const enabled = (e.target as HTMLInputElement).checked
+      sceneEditor?.updateObjectProp(obj.id, 'physicsEnabled', enabled)
+      props.querySelector<HTMLElement>('#physics-extra')?.classList.toggle('hidden', !enabled)
+    })
+    props.querySelector<HTMLInputElement>('#insp-static')?.addEventListener('change', e =>
+      sceneEditor?.updateObjectProp(obj.id, 'isStatic', (e.target as HTMLInputElement).checked))
+    props.querySelector<HTMLInputElement>('#insp-bounce')?.addEventListener('change', e =>
+      sceneEditor?.updateObjectProp(obj.id, 'bounce', parseFloat((e.target as HTMLInputElement).value)))
+    props.querySelector<HTMLInputElement>('#insp-gravity')?.addEventListener('change', e =>
+      sceneEditor?.updateObjectProp(obj.id, 'allowGravity', (e.target as HTMLInputElement).checked))
+    props.querySelector<HTMLInputElement>('#insp-worldbounds')?.addEventListener('change', e =>
+      sceneEditor?.updateObjectProp(obj.id, 'collideWorldBounds', (e.target as HTMLInputElement).checked))
+    props.querySelector<HTMLInputElement>('#insp-camfollow')?.addEventListener('change', e =>
+      sceneEditor?.updateObjectProp(obj.id, 'cameraFollow', (e.target as HTMLInputElement).checked))
   })
 
   document.querySelectorAll<HTMLButtonElement>('.tool-btn[data-tool]').forEach(btn => {
@@ -254,7 +296,9 @@ function setNameInput(name: string) {
 function save(showFeedback = true) {
   const objects = sceneEditor?.getObjects().map(o => ({
     id: o.id, type: o.type, x: o.x, y: o.y,
-    width: o.width, height: o.height, label: o.label, color: o.color, text: o.text, assetKey: o.assetKey
+    width: o.width, height: o.height, label: o.label, color: o.color, text: o.text, assetKey: o.assetKey,
+    physicsEnabled: o.physicsEnabled, isStatic: o.isStatic, bounce: o.bounce,
+    allowGravity: o.allowGravity, collideWorldBounds: o.collideWorldBounds, cameraFollow: o.cameraFollow
   })) ?? []
   const graph = nodeEditor?.serialize() ?? '{}'
 

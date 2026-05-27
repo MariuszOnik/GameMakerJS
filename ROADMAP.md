@@ -46,11 +46,11 @@
 
 ## Faza 4 – Fizyka i gameplay
 
-- [ ] Phaser Arcade Physics – grawitacja, prędkość, odbicie
-- [ ] Kolizja – węzeł "Gdy A uderzy B → exec"
-- [ ] Platforma – sprite jako podłoga/ściana (statyczne ciało)
-- [ ] Kamera śledząca – kamera podąża za wybranym obiektem
-- [ ] Granice świata – obiekty odbijają się od krawędzi
+- [x] Phaser Arcade Physics – grawitacja, prędkość, odbicie
+- [x] Kolizja – automatyczne kolizje między obiektami fizycznymi
+- [x] Platforma – sprite jako podłoga/ściana (statyczne ciało)
+- [x] Kamera śledząca – kamera podąża za wybranym obiektem
+- [x] Granice świata – obiekty odbijają się od krawędzi
 - [ ] Szablony gier – Platformer / Top-down / Endless runner starter
 
 ---

@@ -172,5 +172,21 @@ export const NODE_DEFS: Record<string, NodeDef> = {
       target: { label: 'ID Tekstu', defaultValue: 'Tekst1' },
       text: { label: 'Treść', defaultValue: 'Wynik: 0' }
     }
+  },
+
+  // ── Faza 4 ─────────────────────────────────────────────
+
+  'jump': {
+    type: 'jump', label: 'Skocz', icon: '🦘', category: 'action',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'target', label: 'ID', type: 'string' },
+      { id: 'force', label: 'Siła', type: 'number' }
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+    props: {
+      target: { label: 'Sprite ID', defaultValue: 'Sprite1' },
+      force: { label: 'Siła', defaultValue: 400 }
+    }
   }
 }

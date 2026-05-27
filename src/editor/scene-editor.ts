@@ -12,6 +12,12 @@ export interface SceneObject {
   color?: number
   text?: string
   assetKey?: string
+  physicsEnabled?: boolean
+  isStatic?: boolean
+  bounce?: number
+  allowGravity?: boolean
+  collideWorldBounds?: boolean
+  cameraFollow?: boolean
   phaserObj?: Phaser.GameObjects.GameObject
 }
 
