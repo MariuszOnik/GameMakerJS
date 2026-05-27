@@ -626,6 +626,8 @@ select.node-input-field { cursor: pointer; }
 #modal-assets-body {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 12px;
 }
 #modal-assets-footer {
