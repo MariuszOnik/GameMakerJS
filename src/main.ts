@@ -2,6 +2,7 @@ import './style.css'
 import { SceneEditor } from './editor/scene-editor'
 import { NodeEditor } from './logic/node-editor'
 import { GameRunner } from './game/game-runner'
+import { NODE_DEFS } from './logic/node-types'
 import {
   getAllProjects, getCurrentId, saveProject, loadProject,
   deleteProject, createNewId, setCurrentId, formatDate
@@ -139,12 +140,65 @@ function initNodeEditor() {
   nodeEditor = new NodeEditor(container)
 
   const menu = document.getElementById('node-add-menu')!
+  const searchInput = document.getElementById('node-search') as HTMLInputElement
+  const menuItems = document.getElementById('node-menu-items')!
+
+  const CATEGORIES = [
+    { id: 'event',  label: 'Zdarzenia' },
+    { id: 'action', label: 'Akcje' },
+    { id: 'value',  label: 'Wartości' },
+  ] as const
+
+  function renderNodeMenu(filter = '') {
+    menuItems.innerHTML = ''
+    const q = filter.toLowerCase().trim()
+    const all = Object.values(NODE_DEFS)
+    for (const cat of CATEGORIES) {
+      const nodes = all.filter(n =>
+        n.category === cat.id &&
+        (!q || n.label.toLowerCase().includes(q) || n.type.includes(q))
+      )
+      if (!nodes.length) continue
+      if (!q) {
+        const title = document.createElement('div')
+        title.className = 'menu-title'
+        title.textContent = cat.label
+        menuItems.appendChild(title)
+      }
+      for (const def of nodes) {
+        const btn = document.createElement('button')
+        btn.className = 'menu-item'
+        btn.textContent = `${def.icon} ${def.label}`
+        btn.addEventListener('click', () => {
+          nodeEditor?.addNode(def.type)
+          closeMenu()
+        })
+        menuItems.appendChild(btn)
+      }
+    }
+  }
+
+  function openMenu() {
+    renderNodeMenu('')
+    menu.classList.remove('hidden')
+    searchInput.value = ''
+    searchInput.focus()
+  }
+  function closeMenu() {
+    menu.classList.add('hidden')
+  }
+
   document.getElementById('btn-add-node')?.addEventListener('click', e => {
     e.stopPropagation()
-    menu.classList.toggle('hidden')
+    menu.classList.contains('hidden') ? openMenu() : closeMenu()
   })
-  document.querySelectorAll<HTMLButtonElement>('.menu-item').forEach(item => {
-    item.addEventListener('click', () => { nodeEditor?.addNode(item.dataset.node!); menu.classList.add('hidden') })
+  searchInput.addEventListener('input', () => renderNodeMenu(searchInput.value))
+  searchInput.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeMenu()
+    if (e.key === 'Enter') {
+      const first = menuItems.querySelector<HTMLButtonElement>('.menu-item')
+      first?.click()
+    }
   })
   document.getElementById('btn-clear-graph')?.addEventListener('click', () => {
     if (confirm('Wyczyścić cały graf?')) nodeEditor?.clear()
