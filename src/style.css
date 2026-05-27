@@ -63,6 +63,8 @@ button { cursor: pointer; border: none; background: none; color: inherit; font: 
   border-radius: 4px;
   padding: 2px 6px;
   width: 160px;
+  min-width: 60px;
+  flex-shrink: 1;
   transition: border-color 0.15s, background 0.15s;
 }
 #project-name:hover { border-color: var(--border); }
@@ -72,12 +74,23 @@ button { cursor: pointer; border: none; background: none; color: inherit; font: 
   background: var(--bg-card);
 }
 
-#header-actions { display: flex; gap: 8px; }
+#header-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  /* max-width ogranicza pasek akcji do dostępnego miejsca */
+  max-width: calc(100vw - 90px);
+}
+#header-actions::-webkit-scrollbar { display: none; }
 #header-actions button {
   font-size: 20px;
   padding: 4px 8px;
   border-radius: 6px;
   transition: background 0.15s;
+  flex-shrink: 0;
 }
 #header-actions button:hover { background: var(--bg-card); }
 
@@ -1066,6 +1079,27 @@ select.node-input-field { cursor: pointer; }
   border-radius: 6px;
   padding: 6px 10px !important;
   border-left: 2px solid var(--accent-dim);
+}
+.help-code {
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+  color: #e6edf3;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre;
+  -webkit-overflow-scrolling: touch;
+}
+.help-section code {
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 3px;
+  padding: 1px 4px;
+  color: var(--accent);
 }
 
 .help-table {

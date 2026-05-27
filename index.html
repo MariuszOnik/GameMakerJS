@@ -246,7 +246,43 @@
               <div class="help-row"><span class="help-key">⚡ Akcje</span><span><b>Rusz Sprite</b> (delta dX/dY), <b>Ustaw pozycję</b> (bezpośrednie X/Y), <b>Ustaw Prędkość</b> (fizyka VX/VY), <b>Skocz</b>, <b>Pokaż/Ukryj</b> (pokaż/ukryj/przełącz), <b>Wyświetl Tekst</b>, <b>Ustaw Zmienną</b>, <b>Warunek</b>, <b>Czekaj</b>, <b>Log</b>.</span></div>
               <div class="help-row"><span class="help-key">🔢 Wartości</span><span><b>Liczba</b>, <b>Tekst</b>, <b>Matematyka</b> (+−×÷%), <b>Losowa liczba</b>, <b>Pobierz Zmienną</b>, <b>Pobierz właściwość</b> (x/y/vx/vy/width/height obiektu).</span></div>
             </div>
-            <p class="help-tip">💡 "Sprite ID" w węzłach = pole <b>Nazwa</b> obiektu z inspektora sceny (np. Sprite1, Gracz).</span></p>
+            <p class="help-tip">💡 "Sprite ID" w węzłach = pole <b>Nazwa</b> obiektu z inspektora sceny (np. Sprite1, Gracz).</p>
+          </div>
+
+          <div class="help-section">
+            <div class="help-section-title">&lt;/&gt; Własne węzły (przycisk &lt;/&gt; w toolbarze Logiki)</div>
+            <p>Możesz pisać własne węzły w JavaScript bez modyfikowania kodu aplikacji. Węzeł jest kompilowany razem z grafem do natywnego JS.</p>
+            <p><b>Szablon:</b></p>
+            <pre class="help-code">registerNode({
+  type: 'moj-wezel',       // unikalny ID
+  label: 'Mój węzeł',     // nazwa w menu
+  icon: '⭐',
+  category: 'action',     // 'action' | 'value' | 'event'
+
+  props: {
+    target: { label: 'Sprite ID', defaultValue: 'Sprite1' },
+    amount: { label: 'Wartość',   defaultValue: 10 }
+  },
+
+  run(inputs) {
+    // inputs.X = skompilowane wyrażenie JS dla danego props.X
+    return `
+      const _s = this.sprites.get(${inputs.target});
+      if (_s) {
+        // twój kod
+      }
+    `
+  }
+})</pre>
+            <div class="help-table">
+              <div class="help-row"><span class="help-key">inputs.X</span><span>Wyrażenie JS dla props.X – już skompilowane przez graf (np. <code>"Gracz"</code> albo <code>(this.variables.get("x") ?? 0)</code>).</span></div>
+              <div class="help-row"><span class="help-key">this.sprites</span><span>Map&lt;string, GameObject&gt; – wszystkie obiekty sceny po nazwie.</span></div>
+              <div class="help-row"><span class="help-key">this.variables</span><span>Map&lt;string, number|string&gt; – zmienne użytkownika (set/get).</span></div>
+              <div class="help-row"><span class="help-key">this.time</span><span>Phaser Time – <code>this.time.delayedCall(ms, fn)</code> do timerów.</span></div>
+              <div class="help-row"><span class="help-key">this.cameras.main</span><span>Kamera gry – zoom, scroll, follow.</span></div>
+              <div class="help-row"><span class="help-key">this.physics</span><span>Silnik Arcade – dodawanie ciał, kolizji w locie.</span></div>
+            </div>
+            <p class="help-tip">💡 Własne węzły są zapisane w przeglądarce (localStorage) i dostępne we wszystkich projektach. Usunięcie węzła nie usuwa go z grafu – połączenia pozostają, ale kod przestaje się generować.</p>
           </div>
 
           <div class="help-section">
