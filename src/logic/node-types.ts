@@ -176,6 +176,33 @@ export const NODE_DEFS: Record<string, NodeDef> = {
 
   // ── Faza 4 ─────────────────────────────────────────────
 
+  'set-position': {
+    type: 'set-position', label: 'Ustaw pozycję', icon: '📍', category: 'action',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'target', label: 'ID', type: 'string' },
+      { id: 'x', label: 'X', type: 'number' },
+      { id: 'y', label: 'Y', type: 'number' }
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+    props: {
+      target: { label: 'Sprite ID', defaultValue: 'Sprite1' },
+      x: { label: 'X', defaultValue: 0 },
+      y: { label: 'Y', defaultValue: 0 }
+    }
+  },
+  'set-visible': {
+    type: 'set-visible', label: 'Pokaż / Ukryj', icon: '👁', category: 'action',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'target', label: 'ID', type: 'string' }
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+    props: {
+      target: { label: 'Sprite ID', defaultValue: 'Sprite1' },
+      visible: { label: 'Tryb', defaultValue: 'pokaz', options: ['pokaz', 'ukryj', 'przelacz'] }
+    }
+  },
   'get-property': {
     type: 'get-property', label: 'Pobierz właściwość', icon: '🎯', category: 'value',
     inputs: [],

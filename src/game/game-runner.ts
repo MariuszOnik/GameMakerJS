@@ -228,6 +228,31 @@ export class GameRunner {
             if (s instanceof Phaser.GameObjects.Text) s.setText(text)
             break
           }
+          case 'set-position': {
+            const target = String(this.resolvePort(nodeId, 'target', ctx))
+            const x = Number(this.resolvePort(nodeId, 'x', ctx))
+            const y = Number(this.resolvePort(nodeId, 'y', ctx))
+            const s = this.sprites.get(target)
+            if (s) {
+              const body = getBody(s)
+              // reset() moves both body and game object atomically
+              if (body instanceof Phaser.Physics.Arcade.Body) body.reset(x, y)
+              else (s as Phaser.GameObjects.Image).setPosition(x, y)
+            }
+            break
+          }
+          case 'set-visible': {
+            const target = String(this.resolvePort(nodeId, 'target', ctx))
+            const mode = String(node.props.visible ?? 'pokaz')
+            const s = this.sprites.get(target)
+            if (s) {
+              const go = s as Phaser.GameObjects.Image
+              if (mode === 'pokaz') go.setVisible(true)
+              else if (mode === 'ukryj') go.setVisible(false)
+              else go.setVisible(!go.visible)
+            }
+            break
+          }
           case 'if-condition': {
             const a = Number(this.resolvePort(nodeId, 'a', ctx))
             const b = Number(this.resolvePort(nodeId, 'b', ctx))
