@@ -102,6 +102,16 @@ function initSceneEditor() {
   snapXInput.addEventListener('change', applySnap)
   snapYInput.addEventListener('change', applySnap)
 
+  const inspector = document.getElementById('scene-inspector')!
+  const toggleBtn = document.getElementById('inspector-toggle')!
+  let inspectorOpen = true
+  toggleBtn.addEventListener('click', () => {
+    inspectorOpen = !inspectorOpen
+    inspector.classList.toggle('collapsed', !inspectorOpen)
+    toggleBtn.textContent = inspectorOpen ? '▲ Panel' : '▼ Panel'
+    if (inspectorOpen) sceneEditor?.resize()
+  })
+
   // Keyboard shortcuts for selected object
   window.addEventListener('keydown', e => {
     if (document.activeElement?.tagName === 'INPUT') return
