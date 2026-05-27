@@ -57,12 +57,60 @@ export class SceneEditor {
         for (let x = 0; x < 2000; x += 32) gfx.lineBetween(x, 0, x, 2000)
         for (let y = 0; y < 2000; y += 32) gfx.lineBetween(0, y, 2000, y)
 
-        // Camera pan (drag on empty space)
+        // Camera pan helpers
+        const cam = this.cameras.main
+        let spaceDown = false
+        let lastTouchMidX = 0, lastTouchMidY = 0
+
+        this.input.keyboard?.on('keydown-SPACE', () => { spaceDown = true })
+        this.input.keyboard?.on('keyup-SPACE',   () => { spaceDown = false })
+
         this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
-          if (p.isDown && editorRef.currentTool === 'move' && !editorRef.selectedId) {
-            this.cameras.main.scrollX -= p.velocity.x / this.cameras.main.zoom
-            this.cameras.main.scrollY -= p.velocity.y / this.cameras.main.zoom
+          const dx = (p.x - p.prevPosition.x) / cam.zoom
+          const dy = (p.y - p.prevPosition.y) / cam.zoom
+
+          // Middle mouse button – always pan
+          if (p.middleButtonDown()) {
+            cam.scrollX -= dx
+            cam.scrollY -= dy
+            return
           }
+
+          // Space + left drag – pan (Figma-style)
+          if (spaceDown && p.isDown) {
+            cam.scrollX -= dx
+            cam.scrollY -= dy
+            return
+          }
+
+          // Move tool – pan with left button
+          if (p.isDown && editorRef.currentTool === 'move') {
+            cam.scrollX -= dx
+            cam.scrollY -= dy
+            return
+          }
+
+          // Two-finger touch pan
+          const ptrs = this.input.manager.pointers.filter(pt => pt.isDown)
+          if (ptrs.length >= 2) {
+            const midX = (ptrs[0].x + ptrs[1].x) / 2
+            const midY = (ptrs[0].y + ptrs[1].y) / 2
+            if (lastTouchMidX !== 0) {
+              cam.scrollX -= (midX - lastTouchMidX) / cam.zoom
+              cam.scrollY -= (midY - lastTouchMidY) / cam.zoom
+            }
+            lastTouchMidX = midX
+            lastTouchMidY = midY
+          } else {
+            lastTouchMidX = 0
+            lastTouchMidY = 0
+          }
+        })
+
+        // Mouse wheel zoom
+        this.input.on('wheel', (_p: Phaser.Input.Pointer, _objs: unknown, _dx: number, dy: number) => {
+          const factor = dy < 0 ? 1.1 : 0.9
+          cam.setZoom(Math.min(3, Math.max(0.3, cam.zoom * factor)))
         })
 
         // Deselect on background click
@@ -209,6 +257,7 @@ export class SceneEditor {
       obj.phaserObj.setPosition(obj.x, obj.y)
       const lbl = obj.phaserObj.getData('labelRef') as Phaser.GameObjects.Text | undefined
       lbl?.setPosition(obj.x, obj.y)
+      if (prop === 'label') lbl?.setText(String(value))
     } else if (obj.phaserObj instanceof Phaser.GameObjects.Text) {
       obj.phaserObj.setPosition(obj.x, obj.y)
       if (prop === 'text') obj.phaserObj.setText(String(value))

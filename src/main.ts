@@ -42,12 +42,15 @@ function initSceneEditor() {
     empty.classList.add('hidden')
     props.classList.remove('hidden')
     props.innerHTML = `
-      <div class="inspector-title">${obj.label} (${obj.type})</div>
-      <div class="inspector-row"><label>X</label><input type="number" id="insp-x" value="${Math.round(obj.x)}" /></div>
-      <div class="inspector-row"><label>Y</label><input type="number" id="insp-y" value="${Math.round(obj.y)}" /></div>
+      <div class="inspector-title">${obj.type}</div>
+      <div class="inspector-row"><label>Nazwa</label><input type="text"   id="insp-label" value="${obj.label}" /></div>
+      <div class="inspector-row"><label>X</label>    <input type="number" id="insp-x"     value="${Math.round(obj.x)}" /></div>
+      <div class="inspector-row"><label>Y</label>    <input type="number" id="insp-y"     value="${Math.round(obj.y)}" /></div>
       ${obj.type === 'text' ? `<div class="inspector-row"><label>Tekst</label><input type="text" id="insp-txt" value="${obj.text ?? ''}" /></div>` : ''}
       <div class="inspector-row"><button id="btn-delete-obj" class="btn-danger">🗑 Usuń obiekt</button></div>
     `
+    props.querySelector<HTMLInputElement>('#insp-label')?.addEventListener('change', e =>
+      sceneEditor?.updateObjectProp(obj.id, 'label', (e.target as HTMLInputElement).value))
     props.querySelector<HTMLInputElement>('#insp-x')?.addEventListener('change', e =>
       sceneEditor?.updateObjectProp(obj.id, 'x', parseFloat((e.target as HTMLInputElement).value)))
     props.querySelector<HTMLInputElement>('#insp-y')?.addEventListener('change', e =>

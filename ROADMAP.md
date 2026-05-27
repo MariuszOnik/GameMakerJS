@@ -14,7 +14,8 @@
 
 - [x] Usuń obiekt ze sceny – przycisk 🗑 w inspektorze lub klawisz Delete
 - [x] Usuń węzeł z grafu – przycisk ✕ na headerze węzła, usuwa też połączenia
-- [ ] Zmień nazwę obiektu – edytowalne pole "label" w inspektorze
+- [x] Przesuwanie kamery nad sceną – środkowy przycisk myszy / spacja+drag / 2 palce / scroll zoom
+- [x] Zmień nazwę obiektu – edytowalne pole "Nazwa" w inspektorze, aktualizuje label w scenie
 - [ ] Duplikuj obiekt – kopiuj/wklej sprite ze sceną
 - [ ] Undo / Redo – Ctrl+Z / Ctrl+Y, historia zmian
 - [ ] Snap do siatki – obiekty przyciągają się co 32px
