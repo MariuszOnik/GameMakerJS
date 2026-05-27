@@ -1,5 +1,16 @@
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { execSync } from 'child_process'
+
+function getBuildMeta() {
+  const now = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const date = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`
+  const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`
+  let hash = 'dev'
+  try { hash = execSync('git rev-parse --short HEAD').toString().trim() } catch {}
+  return `${date} ${time} · ${hash}`
+}
 
 export default defineConfig({
   base: '/GameMakerJS/', 
@@ -42,6 +53,9 @@ export default defineConfig({
       }
     })
   ],
+  define: {
+    __BUILD_META__: JSON.stringify(getBuildMeta())
+  },
   server: { port: 3000, host: true },
-  preview: { port: 3000, host: true } 
+  preview: { port: 3000, host: true }
 })

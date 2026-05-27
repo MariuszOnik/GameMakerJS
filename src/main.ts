@@ -651,6 +651,9 @@ document.getElementById('btn-register-node')?.addEventListener('click', () => {
   }
 })
 
+// ── Build version ──────────────────────────────────────────
+document.getElementById('build-version')!.textContent = __BUILD_META__
+
 // ── Help modal ─────────────────────────────────────────────
 function openHelp() { document.getElementById('modal-help-backdrop')!.classList.remove('hidden') }
 function closeHelp() { document.getElementById('modal-help-backdrop')!.classList.add('hidden') }
