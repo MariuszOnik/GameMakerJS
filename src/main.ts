@@ -528,3 +528,12 @@ sceneEditor!.onReady(() => {
 })
 
 window.addEventListener('resize', () => sceneEditor?.resize())
+
+// ── Help modal ─────────────────────────────────────────────
+function openHelp() { document.getElementById('modal-help-backdrop')!.classList.remove('hidden') }
+function closeHelp() { document.getElementById('modal-help-backdrop')!.classList.add('hidden') }
+document.getElementById('btn-help')?.addEventListener('click', openHelp)
+document.getElementById('modal-help-close')?.addEventListener('click', closeHelp)
+document.getElementById('modal-help-backdrop')?.addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeHelp()
+})

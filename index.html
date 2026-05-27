@@ -22,6 +22,7 @@
           <button id="btn-assets" title="Zasoby (obrazy)">🖼</button>
           <button id="btn-save" title="Zapisz projekt">💾</button>
           <button id="btn-play-header" title="Uruchom grę">▶</button>
+          <button id="btn-help" title="Pomoc">?</button>
         </div>
       </header>
 
@@ -143,6 +144,120 @@
             📂 Wgraj obraz
             <input type="file" id="asset-file-input" accept="image/png,image/jpeg,image/gif,image/webp" hidden />
           </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Help modal -->
+    <div id="modal-help-backdrop" class="hidden">
+      <div id="modal-help">
+        <div class="modal-help-header">
+          <span>? Jak używać GameMakerJS</span>
+          <button id="modal-help-close">✕</button>
+        </div>
+        <div id="modal-help-body">
+
+          <div class="help-section">
+            <div class="help-section-title">🖼 Zakładka Scena</div>
+            <p>Tutaj budujesz wizualną część gry – układasz obiekty na planszy.</p>
+            <div class="help-table">
+              <div class="help-row"><span class="help-key">↖ Zaznacz</span><span>Kliknij obiekt żeby go wybrać i przeciągnąć.</span></div>
+              <div class="help-row"><span class="help-key">✋ Przesuń kamerę</span><span>Kliknij i przeciągnij tło żeby przesunąć widok.</span></div>
+              <div class="help-row"><span class="help-key">🖼 Dodaj Sprite</span><span>Dodaje prostokąt / obraz do sceny w centrum kamery.</span></div>
+              <div class="help-row"><span class="help-key">T Dodaj Tekst</span><span>Dodaje obiekt tekstowy (np. wynik, HUD).</span></div>
+              <div class="help-row"><span class="help-key">↩ / ↪</span><span>Cofnij / Ponów ostatnią zmianę (do 50 kroków).</span></div>
+            </div>
+            <p class="help-tip">💡 Środkowy przycisk myszy lub <b>Spacja + przeciągnij</b> też przesuwa kamerę. Scroll kółkiem = zoom.</p>
+          </div>
+
+          <div class="help-section">
+            <div class="help-section-title">🔍 Inspektor (Panel dolny – Scena)</div>
+            <p>Po kliknięciu obiektu w inspektorze możesz edytować jego właściwości.</p>
+            <div class="help-table">
+              <div class="help-row"><span class="help-key">Nazwa</span><span>Identyfikator obiektu – używany w węzłach logiki jako "Sprite ID".</span></div>
+              <div class="help-row"><span class="help-key">X / Y</span><span>Pozycja obiektu na scenie (środek obiektu).</span></div>
+              <div class="help-row"><span class="help-key">W / H</span><span>Rozmiar w pikselach (szerokość / wysokość).</span></div>
+              <div class="help-row"><span class="help-key">Obraz</span><span>Przypisuje teksturę ze zbioru Zasobów do tego sprite'a.</span></div>
+              <div class="help-row"><span class="help-key">⧉ Duplikuj</span><span>Kopiuje obiekt z przesunięciem +24px.</span></div>
+              <div class="help-row"><span class="help-key">🗑 Usuń</span><span>Usuwa obiekt ze sceny (lub klawisz Delete / Backspace).</span></div>
+            </div>
+            <p><b>Siatka / Snap</b> (gdy nic nie zaznaczone) – włącz snapowanie do siatki i ustaw X/Y kroku.</p>
+            <p class="help-tip">💡 Kliknij „▲ Panel" żeby zwinąć / rozwinąć inspektor i zyskać więcej miejsca na scenę.</p>
+          </div>
+
+          <div class="help-section">
+            <div class="help-section-title">⚡ Fizyka (sekcja w inspektorze)</div>
+            <p>Fizyka działa tylko w trybie Gra (▶). W edytorze obiekty są statyczne.</p>
+            <div class="help-table">
+              <div class="help-row"><span class="help-key">Fizyka ✓</span><span>Włącza silnik Arcade Physics na tym obiekcie.</span></div>
+              <div class="help-row"><span class="help-key">Statyczny ✓</span><span>Obiekt nie porusza się – idealny na platformy i podłogę.</span></div>
+              <div class="help-row"><span class="help-key">Odbicie</span><span>0 = brak odbicia, 1 = pełne odbicie (piłka). Ułamki pomiędzy.</span></div>
+              <div class="help-row"><span class="help-key">Grawitacja ✓</span><span>Czy grawitacja (y = 500 px/s²) ciągnie obiekt w dół.</span></div>
+              <div class="help-row"><span class="help-key">Granice ✓</span><span>Obiekt nie wychodzi poza krawędzie ekranu.</span></div>
+              <div class="help-row"><span class="help-key">Kamera śledzi ✓</span><span>Kamera podąża za tym obiektem podczas gry.</span></div>
+            </div>
+            <p class="help-tip">💡 Collider (prostokąt kolizji) ma rozmiar W × H obiektu. Kolizje między obiektami fizycznymi są automatyczne – nie trzeba nic łączyć węzłami.</p>
+          </div>
+
+          <div class="help-section">
+            <div class="help-section-title">🖼 Zasoby (przycisk 🖼 w nagłówku)</div>
+            <p>Przechowuje obrazy PNG/JPG/GIF dostępne dla wszystkich projektów.</p>
+            <div class="help-table">
+              <div class="help-row"><span class="help-key">Wgraj obraz</span><span>Wczytuje plik z dysku. Obraz trafia do pamięci przeglądarki.</span></div>
+              <div class="help-row"><span class="help-key">➕ Do sceny</span><span>Tworzy sprite i od razu przypisuje ten obraz.</span></div>
+              <div class="help-row"><span class="help-key">✕ na miniaturze</span><span>Usuwa zasób (nie usuwa obiektów w scenie).</span></div>
+            </div>
+            <p class="help-tip">💡 W inspektorze kliknij „Obraz → Brak – wybierz…" żeby otworzyć Zasoby w trybie pickera i przypisać obraz do wybranego sprite'a.</p>
+          </div>
+
+          <div class="help-section">
+            <div class="help-section-title">⬡ Zakładka Logika – Węzły</div>
+            <p>Graf węzłów definiuje zachowanie gry. Węzły łączą się portami – białe = exec (przepływ), żółte = liczba, fioletowe = tekst.</p>
+            <div class="help-table">
+              <div class="help-row"><span class="help-key">＋ Węzeł</span><span>Otwiera menu z listą węzłów. Wpisz nazwę żeby filtrować. Enter dodaje pierwszy wynik.</span></div>
+              <div class="help-row"><span class="help-key">Połączenie</span><span>Przeciągnij z portu wyjściowego na port wejściowy tego samego koloru.</span></div>
+              <div class="help-row"><span class="help-key">Usuń połączenie</span><span>Kliknij na linię połączenia – zmieni kolor na czerwony, kliknij ponownie żeby usunąć.</span></div>
+              <div class="help-row"><span class="help-key">✕ na węźle</span><span>Usuwa węzeł wraz z jego połączeniami.</span></div>
+              <div class="help-row"><span class="help-key">Pan / Zoom</span><span>Przeciągnij tło żeby przesunąć widok, scroll żeby zbliżyć/oddalić.</span></div>
+            </div>
+
+            <p><b>Kategorie węzłów:</b></p>
+            <div class="help-table">
+              <div class="help-row"><span class="help-key">🟢 Zdarzenia</span><span><b>Na Start</b> – uruchamia się raz; <b>Na Update</b> – każda klatka; <b>Na Dotyk/Klik</b> – dotknięcie ekranu (daje X, Y).</span></div>
+              <div class="help-row"><span class="help-key">⚡ Akcje</span><span><b>Rusz Sprite</b> (teleport dX/dY), <b>Ustaw Prędkość</b> (fizyka VX/VY), <b>Skocz</b> (impulse w górę gdy na ziemi), <b>Wyświetl Tekst</b>, <b>Ustaw Zmienną</b>, <b>Warunek</b>, <b>Czekaj</b>, <b>Log</b>.</span></div>
+              <div class="help-row"><span class="help-key">🔢 Wartości</span><span><b>Liczba</b>, <b>Tekst</b>, <b>Matematyka</b> (+−×÷%), <b>Losowa liczba</b>, <b>Pobierz Zmienną</b>.</span></div>
+            </div>
+            <p class="help-tip">💡 "Sprite ID" w węzłach = pole <b>Nazwa</b> obiektu z inspektora sceny (np. Sprite1, Gracz).</span></p>
+          </div>
+
+          <div class="help-section">
+            <div class="help-section-title">▶ Zakładka Gra</div>
+            <p>Uruchamia grę z aktualną sceną i logiką węzłów. Fizyka i węzły zaczynają działać dopiero tutaj.</p>
+            <p class="help-tip">⏹ Przycisk Stop zatrzymuje grę i wraca do widoku startowego.</p>
+          </div>
+
+          <div class="help-section">
+            <div class="help-section-title">📂 Projekty</div>
+            <div class="help-table">
+              <div class="help-row"><span class="help-key">💾 Zapisz</span><span>Zapisuje projekt do pamięci przeglądarki (localStorage).</span></div>
+              <div class="help-row"><span class="help-key">📂 Projekty</span><span>Lista wszystkich projektów – wczytaj lub usuń.</span></div>
+              <div class="help-row"><span class="help-key">＋ Nowy</span><span>Tworzy pusty projekt (obecny jest auto-zapisywany).</span></div>
+            </div>
+            <p class="help-tip">💡 Projekt jest auto-zapisywany co 30 sekund. Nazwa projektu jest edytowalna – kliknij ją w nagłówku.</p>
+          </div>
+
+          <div class="help-section">
+            <div class="help-section-title">⌨ Skróty klawiszowe</div>
+            <div class="help-table">
+              <div class="help-row"><span class="help-key">Ctrl+Z</span><span>Cofnij (undo)</span></div>
+              <div class="help-row"><span class="help-key">Ctrl+Y / Ctrl+Shift+Z</span><span>Ponów (redo)</span></div>
+              <div class="help-row"><span class="help-key">Delete / Backspace</span><span>Usuń zaznaczony obiekt</span></div>
+              <div class="help-row"><span class="help-key">Ctrl+D</span><span>Duplikuj zaznaczony obiekt</span></div>
+              <div class="help-row"><span class="help-key">Spacja + przeciągnij</span><span>Przesuń kamerę w edytorze sceny</span></div>
+              <div class="help-row"><span class="help-key">Scroll kółkiem</span><span>Zoom kamery (scena i logika)</span></div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
