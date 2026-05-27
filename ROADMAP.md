@@ -18,7 +18,7 @@
 - [x] Zmień nazwę obiektu – edytowalne pole "Nazwa" w inspektorze, aktualizuje label w scenie
 - [x] Duplikuj obiekt – kopiuj/wklej sprite ze sceną
 - [x] Undo / Redo – Ctrl+Z / Ctrl+Y, historia zmian
-- [ ] Snap do siatki – obiekty przyciągają się co 32px
+- [x] Snap do siatki – konfigurowalne X/Y, przycisk ⊞ w toolbarze
 
 ---
 

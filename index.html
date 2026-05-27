@@ -37,6 +37,12 @@
             <div class="toolbar-sep"></div>
             <button class="tool-btn" id="btn-undo" title="Cofnij (Ctrl+Z)">↩</button>
             <button class="tool-btn" id="btn-redo" title="Ponów (Ctrl+Y)">↪</button>
+            <div class="toolbar-sep"></div>
+            <button class="tool-btn" id="btn-snap" title="Snap do siatki">⊞</button>
+            <div class="snap-form" id="snap-form">
+              <label class="snap-label">X<input type="number" id="snap-x" class="snap-input" value="32" min="1" max="512" /></label>
+              <label class="snap-label">Y<input type="number" id="snap-y" class="snap-input" value="32" min="1" max="512" /></label>
+            </div>
           </div>
           <div id="scene-viewport">
             <!-- Phaser canvas wstrzykiwany tutaj -->

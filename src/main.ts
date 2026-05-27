@@ -79,6 +79,25 @@ function initSceneEditor() {
   document.getElementById('btn-undo')?.addEventListener('click', () => sceneEditor?.undo())
   document.getElementById('btn-redo')?.addEventListener('click', () => sceneEditor?.redo())
 
+  const btnSnap = document.getElementById('btn-snap')!
+  const snapForm = document.getElementById('snap-form')!
+  const snapXInput = document.getElementById('snap-x') as HTMLInputElement
+  const snapYInput = document.getElementById('snap-y') as HTMLInputElement
+  let snapActive = false
+
+  function applySnap() {
+    sceneEditor?.setSnap(snapActive, parseInt(snapXInput.value) || 32, parseInt(snapYInput.value) || 32)
+  }
+
+  btnSnap.addEventListener('click', () => {
+    snapActive = !snapActive
+    btnSnap.classList.toggle('active', snapActive)
+    snapForm.classList.toggle('visible', snapActive)
+    applySnap()
+  })
+  snapXInput.addEventListener('change', applySnap)
+  snapYInput.addEventListener('change', applySnap)
+
   // Keyboard shortcuts for selected object
   window.addEventListener('keydown', e => {
     if (document.activeElement?.tagName === 'INPUT') return

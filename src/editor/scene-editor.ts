@@ -29,6 +29,10 @@ export class SceneEditor {
   private idCounter = 0
   private undoStack: Snapshot[] = []
   private redoStack: Snapshot[] = []
+  private snapEnabled = false
+  private snapX = 32
+  private snapY = 32
+  private gridGfx?: Phaser.GameObjects.Graphics
 
   constructor(container: HTMLElement) {
     this.container = container
@@ -56,10 +60,8 @@ export class SceneEditor {
         editorRef.scene = this as unknown as Phaser.Scene
 
         // Grid background
-        const gfx = this.add.graphics()
-        gfx.lineStyle(1, 0x1e293b, 1)
-        for (let x = 0; x < 2000; x += 32) gfx.lineBetween(x, 0, x, 2000)
-        for (let y = 0; y < 2000; y += 32) gfx.lineBetween(0, y, 2000, y)
+        editorRef.gridGfx = this.add.graphics()
+        editorRef.redrawGrid()
 
         // Camera pan helpers
         const cam = this.cameras.main
@@ -186,6 +188,29 @@ export class SceneEditor {
     this.restoreSnapshot(this.redoStack.pop()!)
   }
 
+  setSnap(enabled: boolean, x: number, y: number) {
+    this.snapEnabled = enabled
+    this.snapX = Math.max(1, x)
+    this.snapY = Math.max(1, y)
+    this.redrawGrid()
+  }
+
+  redrawGrid() {
+    const gfx = this.gridGfx
+    if (!gfx) return
+    gfx.clear()
+    const sx = this.snapX
+    const sy = this.snapY
+    gfx.lineStyle(1, 0x1e293b, 1)
+    for (let x = 0; x < 4000; x += sx) gfx.lineBetween(x, 0, x, 4000)
+    for (let y = 0; y < 4000; y += sy) gfx.lineBetween(0, y, 4000, y)
+  }
+
+  private snap(v: number, step: number): number {
+    if (!this.snapEnabled) return v
+    return Math.round(v / step) * step
+  }
+
   duplicateObject(id: string) {
     const src = this.objects.find(o => o.id === id)
     if (!src) return
@@ -213,8 +238,8 @@ export class SceneEditor {
     const obj: SceneObject = {
       id: `obj_${++this.idCounter}`,
       type,
-      x: Math.round(cx),
-      y: Math.round(cy),
+      x: this.snap(Math.round(cx), this.snapX),
+      y: this.snap(Math.round(cy), this.snapY),
       width: type === 'rect' ? 80 : 64,
       height: type === 'rect' ? 60 : 64,
       label: type === 'sprite' ? `Sprite${this.idCounter}` : type === 'text' ? `Tekst${this.idCounter}` : `Rect${this.idCounter}`,
@@ -270,8 +295,8 @@ export class SceneEditor {
       // Drag object only in select mode
       if (p.isDown && this.selectedId === obj.id && this.currentTool === 'select') {
         if (!dragSnapped) { this.saveSnapshot(); dragSnapped = true }
-        obj.x = Math.round(p.worldX - dragStartX)
-        obj.y = Math.round(p.worldY - dragStartY)
+        obj.x = this.snap(Math.round(p.worldX - dragStartX), this.snapX)
+        obj.y = this.snap(Math.round(p.worldY - dragStartY), this.snapY)
         if (go instanceof Phaser.GameObjects.Rectangle) {
           go.setPosition(obj.x, obj.y)
           const lbl = go.getData('labelRef') as Phaser.GameObjects.Text | undefined
