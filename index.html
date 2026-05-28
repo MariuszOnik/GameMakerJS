@@ -22,6 +22,7 @@
           <button id="btn-assets" title="Zasoby (obrazy)">🖼</button>
           <button id="btn-save" title="Zapisz projekt">💾</button>
           <button id="btn-play-header" title="Uruchom grę">▶</button>
+          <button id="btn-export-html" title="Eksportuj grę jako HTML">📥</button>
           <button id="btn-help" title="Pomoc">?</button>
         </div>
       </header>
@@ -98,9 +99,7 @@
           <div id="play-overlay">
             <button id="btn-play-start">▶ Uruchom Grę</button>
           </div>
-          <div id="play-viewport">
-            <!-- Phaser play mode canvas -->
-          </div>
+          <iframe id="play-iframe" allow="screen-orientation; fullscreen" allowfullscreen></iframe>
           <button id="btn-stop" class="hidden" title="Zatrzymaj grę">⏹ Stop</button>
           <button id="btn-fullscreen" class="hidden" title="Pełny ekran">⛶</button>
         </div>

@@ -4,6 +4,7 @@ import { NodeEditor } from './logic/node-editor'
 import { GameRunner } from './game/game-runner'
 import { NODE_DEFS } from './logic/node-types'
 import type { GameState } from './types'
+import { buildGameHTML } from './export/game-template'
 import {
   getAllProjects, getCurrentId, saveProject, loadProject,
   deleteProject, createNewId, setCurrentId, formatDate
@@ -450,26 +451,25 @@ function initNodeEditor() {
 
 // ── Game runner ────────────────────────────────────────────
 function initPlayTab() {
-  const playViewport = document.getElementById('play-viewport')!
+  const playIframe = document.getElementById('play-iframe') as HTMLIFrameElement
   const overlay = document.getElementById('play-overlay')!
   const btnStop = document.getElementById('btn-stop')!
-  gameRunner = new GameRunner(playViewport)
-
   const btnFullscreen = document.getElementById('btn-fullscreen')!
+  gameRunner = new GameRunner(playIframe)
 
   const startGame = () => {
     flushNodeEditor()
     saveCurrentStateObjects()
-    sceneEditor?.pauseLoop()       // free CPU: stop scene editor loop during play
+    sceneEditor?.pauseLoop()
     overlay.classList.add('hidden')
     btnStop.classList.remove('hidden')
     btnFullscreen.classList.remove('hidden')
-    gameRunner?.start(states, activeStateId)
+    gameRunner?.start(states, activeStateId, getAllAssets())
   }
   const stopGame = () => {
     if (document.fullscreenElement) document.exitFullscreen()
     gameRunner?.stop()
-    sceneEditor?.resumeLoop()      // restore scene editor loop
+    sceneEditor?.resumeLoop()
     btnStop.classList.add('hidden')
     btnFullscreen.classList.add('hidden')
     overlay.classList.remove('hidden')
@@ -477,7 +477,7 @@ function initPlayTab() {
 
   btnFullscreen.addEventListener('click', () => {
     if (!document.fullscreenElement) {
-      playViewport.requestFullscreen().catch(() => {})
+      playIframe.requestFullscreen().catch(() => {})
     } else {
       document.exitFullscreen()
     }
@@ -487,9 +487,6 @@ function initPlayTab() {
     const isFs = !!document.fullscreenElement
     btnFullscreen.textContent = isFs ? '✕' : '⛶'
     btnFullscreen.title = isFs ? 'Wyjdź z pełnego ekranu' : 'Pełny ekran'
-    // Phaser Scale.RESIZE picks up the change automatically via ResizeObserver,
-    // but an explicit refresh ensures immediate re-layout.
-    gameRunner?.refresh()
   })
 
   document.getElementById('btn-play-start')?.addEventListener('click', startGame)
@@ -627,6 +624,21 @@ document.getElementById('btn-new-project')?.addEventListener('click', () => {
 })
 
 document.getElementById('btn-save')?.addEventListener('click', () => save(true))
+
+document.getElementById('btn-export-html')?.addEventListener('click', () => {
+  flushNodeEditor()
+  saveCurrentStateObjects()
+  const assets = getAllAssets()
+  const assetsMap = Object.fromEntries(assets.map(a => [a.key, a.dataUrl]))
+  const html = buildGameHTML(states, assetsMap, activeStateId)
+  const blob = new Blob([html], { type: 'text/html' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${getNameInput().replace(/\s+/g, '_') || 'gra'}.html`
+  a.click()
+  URL.revokeObjectURL(url)
+})
 document.getElementById('btn-new')?.addEventListener('click', () => {
   if (!confirm('Nowy projekt? Obecny zostanie zapisany.')) return
   save(false)

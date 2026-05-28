@@ -578,11 +578,14 @@ select.node-input-field { cursor: pointer; }
 }
 #btn-play-start:active { transform: scale(0.96); }
 
-#play-viewport {
+#play-iframe {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #000;
 }
-#play-viewport canvas { display: block; width: 100% !important; height: 100% !important; }
 
 #btn-stop {
   position: absolute;
