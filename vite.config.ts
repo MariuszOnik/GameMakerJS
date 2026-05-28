@@ -39,6 +39,12 @@ export default defineConfig({
       }
     })
   ],
+  define: {
+    __BUILD_TIME__: JSON.stringify(new Date().toLocaleString('pl-PL', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    }))
+  },
   server: { port: 3000, host: true },
-  preview: { port: 3000, host: true } 
+  preview: { port: 3000, host: true }
 })

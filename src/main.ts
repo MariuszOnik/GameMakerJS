@@ -778,8 +778,13 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── Help modal ─────────────────────────────────────────────
+declare const __BUILD_TIME__: string
+
 function openHelp() { document.getElementById('modal-help-backdrop')!.classList.remove('hidden') }
 function closeHelp() { document.getElementById('modal-help-backdrop')!.classList.add('hidden') }
+const helpBuildInfo = document.getElementById('help-build-info')
+if (helpBuildInfo) helpBuildInfo.textContent = `GameMakerJS • build: ${__BUILD_TIME__}`
+
 document.getElementById('btn-help')?.addEventListener('click', openHelp)
 document.getElementById('modal-help-close')?.addEventListener('click', closeHelp)
 document.getElementById('modal-help-backdrop')?.addEventListener('click', e => {
