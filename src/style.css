@@ -997,6 +997,25 @@ select.node-input-field { cursor: pointer; }
 /* ── Utilities ────────────────────────────────────────── */
 .hidden { display: none !important; }
 
+/* ── Orientation controls ─────────────────────────────── */
+.orientation-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.orient-opt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+.orient-opt input[type="radio"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 /* ── State tabs bar ───────────────────────────────────── */
 #state-tabs-bar {
   display: flex;

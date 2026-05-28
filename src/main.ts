@@ -34,6 +34,23 @@ function getActiveState(): GameState | undefined {
   return states.find(s => s.id === activeStateId)
 }
 
+function syncOrientationUI() {
+  const state = getActiveState()
+  const val = state?.orientation ?? 'any'
+  document.querySelectorAll<HTMLInputElement>('input[name="orientation"]').forEach(r => {
+    r.checked = r.value === val
+  })
+}
+
+function initOrientationControls() {
+  document.querySelectorAll<HTMLInputElement>('input[name="orientation"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      const state = getActiveState()
+      if (state) state.orientation = radio.value as GameState['orientation']
+    })
+  })
+}
+
 function createDefaultState(name: string): GameState {
   return { id: `state_${Date.now()}_${Math.random().toString(36).slice(2)}`, name, objects: [], graph: '' }
 }
@@ -164,11 +181,11 @@ function switchToState(id: string) {
   flushNodeEditor()
   saveCurrentStateObjects()
   activeStateId = id
-  // Load objects from the new active state into sceneEditor
   const state = getActiveState()
   sceneEditor?.loadScene(state?.objects ?? [])
   renderStateTabs()
   loadGraphForContext('state')
+  syncOrientationUI()
 }
 
 // Persist current sceneEditor objects back into the active state.
@@ -508,6 +525,7 @@ function applyProject(proj: { name: string; states: GameState[]; activeStateId: 
   sceneEditor?.loadScene(state?.objects ?? [])
   renderStateTabs()
   loadGraphForContext('state')
+  syncOrientationUI()
 }
 
 // ── Project manager modal ──────────────────────────────────
@@ -712,6 +730,7 @@ initPlayTab()
 
 sceneEditor!.onReady(() => {
   initNodeEditor()
+  initOrientationControls()
 
   const savedId = getCurrentId()
   if (savedId) {

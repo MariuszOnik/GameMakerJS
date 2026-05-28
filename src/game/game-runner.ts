@@ -29,8 +29,18 @@ export class GameRunner {
     this.container = container
   }
 
+  private lockOrientation(states: GameState[], startStateId: string) {
+    const startState = states.find(s => s.id === startStateId) ?? states[0]
+    const orient = startState?.orientation ?? 'any'
+    if (orient !== 'any') {
+      const lockType = orient === 'landscape' ? 'landscape' : 'portrait'
+      screen.orientation?.lock(lockType).catch(() => {})
+    }
+  }
+
   start(states: GameState[], startStateId: string) {
     this.stop()
+    this.lockOrientation(states, startStateId)
 
     const allStates = states
     const startId = startStateId
@@ -408,6 +418,7 @@ export class GameRunner {
   }
 
   stop() {
+    try { screen.orientation?.unlock() } catch { /* desktop doesn't support this */ }
     if (this.game) {
       this.game.destroy(true)
       this.game = null

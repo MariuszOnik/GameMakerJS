@@ -23,4 +23,5 @@ export interface GameState {
   name: string
   objects: SceneObjectDef[]
   graph: string
+  orientation?: 'any' | 'landscape' | 'portrait'
 }
