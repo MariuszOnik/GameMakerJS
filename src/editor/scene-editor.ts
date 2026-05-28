@@ -443,6 +443,14 @@ export class SceneEditor {
     this.init()
   }
 
+  pauseLoop() {
+    this.game?.loop.sleep()
+  }
+
+  resumeLoop() {
+    this.game?.loop.wake()
+  }
+
   destroy() {
     this.game?.destroy(true)
   }

@@ -460,6 +460,7 @@ function initPlayTab() {
   const startGame = () => {
     flushNodeEditor()
     saveCurrentStateObjects()
+    sceneEditor?.pauseLoop()       // free CPU: stop scene editor loop during play
     overlay.classList.add('hidden')
     btnStop.classList.remove('hidden')
     btnFullscreen.classList.remove('hidden')
@@ -468,6 +469,7 @@ function initPlayTab() {
   const stopGame = () => {
     if (document.fullscreenElement) document.exitFullscreen()
     gameRunner?.stop()
+    sceneEditor?.resumeLoop()      // restore scene editor loop
     btnStop.classList.add('hidden')
     btnFullscreen.classList.add('hidden')
     overlay.classList.remove('hidden')
