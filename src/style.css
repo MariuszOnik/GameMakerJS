@@ -446,6 +446,13 @@ button { cursor: pointer; border: none; background: none; color: inherit; font: 
 }
 .node-input-field:focus { outline: none; border-color: var(--accent); }
 select.node-input-field { cursor: pointer; }
+/* Input port with dropdown list */
+.node-port-select {
+  font-size: 10px;
+  padding: 2px 4px;
+  max-width: 100px;
+  flex: 1;
+}
 .menu-title {
   font-size: 9px;
   text-transform: uppercase;

@@ -189,11 +189,57 @@ export class NodeEditor {
       const row = document.createElement('div')
       row.className = 'node-port-row input'
       const portEl = this.createPort(node.id, port.id, port.type, false)
-      const label = document.createElement('span')
-      label.className = 'port-label'
-      label.textContent = port.label
       row.appendChild(portEl)
-      row.appendChild(label)
+
+      if (port.type !== 'exec' && (port as { options?: unknown }).options !== undefined) {
+        // Input with list — show dropdown as default value when no wire connected
+        const portWithOpts = port as { id: string; label: string; options?: string[] | string; defaultValue?: string | number }
+        const sel = document.createElement('select')
+        sel.className = 'node-input-field node-port-select'
+        sel.title = port.label
+
+        const resolveOpts = (): string[] => {
+          const raw = portWithOpts.options
+          if (raw === 'scene-objects') return this.sceneObjectsProvider?.() ?? []
+          if (typeof raw === 'string' && raw.startsWith('__fn__')) {
+            try {
+              const fn = new Function(`return (${raw.slice(6)})`)() as (objs: string[]) => string[]
+              return fn(this.sceneObjectsProvider?.() ?? [])
+            } catch { return [] }
+          }
+          return Array.isArray(raw) ? raw : []
+        }
+
+        const fillSel = () => {
+          const cur = String(node.props[port.id] ?? portWithOpts.defaultValue ?? '')
+          sel.innerHTML = ''
+          const opts = resolveOpts()
+          if (!opts.includes(cur) && cur) opts.unshift(cur)
+          for (const o of opts) {
+            const el = document.createElement('option')
+            el.value = o; el.textContent = o
+            if (o === cur) el.selected = true
+            sel.appendChild(el)
+          }
+          if (!sel.options.length) {
+            const el = document.createElement('option'); el.value = cur; el.textContent = cur || '—'; sel.appendChild(el)
+          }
+        }
+
+        fillSel()
+        sel.addEventListener('focus', fillSel)
+        sel.addEventListener('mousedown', e => e.stopPropagation())
+        sel.addEventListener('touchstart', e => e.stopPropagation(), { passive: true })
+        sel.addEventListener('change', () => { node.props[port.id] = sel.value })
+        if (node.props[port.id] === undefined) node.props[port.id] = sel.value
+        row.appendChild(sel)
+      } else {
+        const label = document.createElement('span')
+        label.className = 'port-label'
+        label.textContent = port.label
+        row.appendChild(label)
+      }
+
       body.appendChild(row)
     }
 

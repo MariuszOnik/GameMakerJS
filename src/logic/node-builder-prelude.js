@@ -20,17 +20,39 @@ class Node {
   category(cat) { this._category = cat; return this; }
 
   // Dodaje port wejściowy (drut) — typ: 'string' | 'number' | 'bool' | 'exec'
-  // tooltip: opcjonalny opis wyświetlany po najechaniu
   input(name, type, tooltip) {
     const t = { any:'number', text:'string', tekst:'string', liczba:'number', bool:'bool' }[type] || type || 'number';
-    this._inputs.push({ id: name, label: tooltip || name, type: t });
+    const portDef = { id: name, label: tooltip || name, type: t };
+    this._inputs.push(portDef);
+    this._lastPort = portDef;  // tracked for .list() / .default()
     return this;
   }
 
   // Dodaje port wyjściowy
   output(name, type, label) {
     const t = { any:'number', text:'string', tekst:'string', liczba:'number', bool:'bool' }[type] || type || 'number';
-    this._outputs.push({ id: name, label: label || name, type: t });
+    const portDef = { id: name, label: label || name, type: t };
+    this._outputs.push(portDef);
+    this._lastPort = portDef;
+    return this;
+  }
+
+  // Dodaje listę opcji do OSTATNIO dodanego input/output portu.
+  // options: tablica stringów | 'scene-objects' | funkcja(objects[]) => string[]
+  list(options) {
+    if (!this._lastPort) return this;
+    if (typeof options === 'function') {
+      // Przechowaj źródło funkcji — wywoływana w edytorze z listą obiektów sceny
+      this._lastPort.options = '__fn__' + options.toString();
+    } else {
+      this._lastPort.options = options;
+    }
+    return this;
+  }
+
+  // Ustawia wartość domyślną ostatnio dodanego portu (widoczna gdy brak drutu)
+  default(val) {
+    if (this._lastPort) this._lastPort.defaultValue = val;
     return this;
   }
 

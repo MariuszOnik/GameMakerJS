@@ -858,12 +858,20 @@ async function initMonacoEditor() {
   monaco.languages.typescript.javascriptDefaults.addExtraLib(`
 declare class Node {
   constructor(type: string, label: string, icon?: string);
-  /** Port wejściowy (drut). type: 'string'|'number'|'bool' */
-  input(name: string, type?: string, label?: string): this;
+  /** Port wejściowy z drutem. type: 'string'|'number'|'bool' */
+  input(name: string, type?: string, tooltip?: string): this;
   /** Port wyjściowy */
   output(name: string, type?: string, label?: string): this;
-  /** Pole edytowalne w UI węzła. options: tablica lub 'scene-objects' */
+  /** Pole edytowalne w UI węzła (bez drutu). options: tablica lub 'scene-objects' */
   prop(name: string, label: string, defaultValue?: string|number, options?: string[]|'scene-objects'): this;
+  /**
+   * Dodaje dropdown do OSTATNIO dodanego input/output portu.
+   * Gdy drut nie jest podłączony — użytkownik wybiera z listy.
+   * @param options tablica string[] | 'scene-objects' | function(objects)=>string[]
+   */
+  list(options: string[] | 'scene-objects' | ((objects: string[]) => string[])): this;
+  /** Wartość domyślna ostatnio dodanego portu */
+  default(val: string|number): this;
   noExecIn(): this;
   noExecOut(): this;
   run(fn: (inputs: Record<string,any>, ctx: GameCtx) => any): this;

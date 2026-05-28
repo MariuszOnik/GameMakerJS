@@ -4,6 +4,8 @@ export interface PortDef {
   id: string
   label: string
   type: PortType
+  options?: string[] | 'scene-objects' | string  // list fallback when no wire connected
+  defaultValue?: string | number
 }
 
 export interface PropDef {
