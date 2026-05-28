@@ -30,11 +30,18 @@ export function buildGameHTML(
       backdrop-filter: blur(4px);
     }
     #btn-fs:hover { background: rgba(74,222,128,0.25); color: #4ade80; }
+    #fps-counter {
+      position: fixed; top: 14px; left: 12px; z-index: 100;
+      font: 12px/1 monospace; color: #4ade80;
+      background: rgba(0,0,0,0.45); padding: 3px 7px;
+      border-radius: 5px; pointer-events: none;
+    }
   </style>
 </head>
 <body>
   <div id="game-container"></div>
   <button id="btn-fs" title="Pełny ekran">⛶</button>
+  <div id="fps-counter">-- fps</div>
 
   <script src="${PHASER_CDN}"></script>
   <script>

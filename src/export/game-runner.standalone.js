@@ -49,12 +49,22 @@
         this.runStateEvent('on-input', { x: p.worldX, y: p.worldY });
         this.runAllObjectsEvent('on-input', { x: p.worldX, y: p.worldY });
       });
+
+      this._fpsEl = document.getElementById('fps-counter');
+      this._fpsFrame = 0;
     }
 
     update() {
       this.handlePendingTransition();
       this.runStateEvent('on-update', {});
       this.runAllObjectsEvent('on-update', {});
+
+      if (this._fpsEl) {
+        this._fpsFrame++;
+        if (this._fpsFrame % 30 === 0) {
+          this._fpsEl.textContent = Math.round(this.game.loop.actualFps) + ' fps';
+        }
+      }
     }
 
     // ── State machine ────────────────────────────────────────────────────────
