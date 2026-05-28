@@ -1,4 +1,5 @@
 import type { GameState } from '../types'
+import type { CustomNodeDef } from '../logic/custom-nodes'
 // @ts-ignore — Vite raw import: file is embedded as string at build time
 import gameRunnerCode from './game-runner.standalone.js?raw'
 
@@ -7,10 +8,12 @@ const PHASER_CDN = 'https://cdn.jsdelivr.net/npm/phaser@4.1.0/dist/phaser-arcade
 export function buildGameHTML(
   states: GameState[],
   assetsMap: Record<string, string>,
-  startStateId: string
+  startStateId: string,
+  customNodes: CustomNodeDef[] = []
 ): string {
   const statesJson = JSON.stringify(states)
   const assetsJson = JSON.stringify(assetsMap)
+  const customNodesJson = JSON.stringify(customNodes)
 
   return `<!DOCTYPE html>
 <html lang="pl">
@@ -45,9 +48,10 @@ export function buildGameHTML(
 
   <script src="${PHASER_CDN}"></script>
   <script>
-    const STATES_DATA = ${statesJson};
-    const ASSETS_DATA = ${assetsJson};
-    const START_ID    = ${JSON.stringify(startStateId)};
+    const STATES_DATA  = ${statesJson};
+    const ASSETS_DATA  = ${assetsJson};
+    const START_ID     = ${JSON.stringify(startStateId)};
+    const CUSTOM_NODES = ${customNodesJson};
   </script>
   <script>${gameRunnerCode}</script>
   <script>

@@ -23,6 +23,7 @@
           <button id="btn-save" title="Zapisz projekt">💾</button>
           <button id="btn-play-header" title="Uruchom grę">▶</button>
           <button id="btn-export-html" title="Eksportuj grę jako HTML">📥</button>
+          <button id="btn-custom-nodes" title="Własne węzły (kod JS)">⚙</button>
           <button id="btn-help" title="Pomoc">?</button>
         </div>
       </header>
@@ -153,6 +154,23 @@
             📂 Wgraj obraz
             <input type="file" id="asset-file-input" accept="image/png,image/jpeg,image/gif,image/webp" hidden />
           </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom nodes modal -->
+    <div id="modal-code-backdrop" class="hidden">
+      <div id="modal-code">
+        <div class="modal-code-header">
+          <span>⚙ Własne Węzły (JS)</span>
+          <button id="modal-code-close">✕</button>
+        </div>
+        <div id="custom-node-list"></div>
+        <div id="custom-node-editor">
+          <div class="custom-node-editor-label">Kod węzła (JavaScript):</div>
+          <textarea id="custom-node-code" spellcheck="false" autocomplete="off" autocorrect="off"></textarea>
+          <div id="custom-node-feedback" class="hidden"></div>
+          <button id="btn-register-node" class="btn-register">Zarejestruj węzeł</button>
         </div>
       </div>
     </div>

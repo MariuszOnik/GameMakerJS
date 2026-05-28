@@ -1,5 +1,6 @@
 import type { GameState } from '../types'
 import type { Asset } from '../assets-store'
+import type { CustomNodeDef } from '../logic/custom-nodes'
 import { buildGameHTML } from '../export/game-template'
 
 export class GameRunner {
@@ -10,10 +11,10 @@ export class GameRunner {
     this.iframe = iframe
   }
 
-  start(states: GameState[], startStateId: string, assets: Asset[]) {
+  start(states: GameState[], startStateId: string, assets: Asset[], customNodes: CustomNodeDef[] = []) {
     this.stop()
     const assetsMap = Object.fromEntries(assets.map(a => [a.key, a.dataUrl]))
-    const html = buildGameHTML(states, assetsMap, startStateId)
+    const html = buildGameHTML(states, assetsMap, startStateId, customNodes)
     this.blobUrl = URL.createObjectURL(new Blob([html], { type: 'text/html' }))
     this.iframe.src = this.blobUrl
   }

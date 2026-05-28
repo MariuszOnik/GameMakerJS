@@ -336,6 +336,26 @@
         case 'pop-state':
           this.pendingPop = true;
           return;
+
+        default: {
+          // Custom node — look up in CUSTOM_NODES global (injected by game-template)
+          if (typeof CUSTOM_NODES !== 'undefined') {
+            const customDef = CUSTOM_NODES.find(function(n) { return n.type === node.type; });
+            if (customDef) {
+              try {
+                const runFn = new Function('return (' + customDef.runSource + ')')();
+                const inputs = {};
+                for (const key of Object.keys(customDef.props)) {
+                  inputs[key] = this.resolvePort(nodeId, key, graph, ctx);
+                }
+                runFn.call(this, inputs);
+              } catch (e) {
+                console.error('[Custom Node "' + node.type + '"]', e);
+              }
+            }
+          }
+          break;
+        }
       }
 
       // Follow exec chain

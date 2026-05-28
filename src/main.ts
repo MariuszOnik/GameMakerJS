@@ -2,9 +2,11 @@ import './style.css'
 import { SceneEditor } from './editor/scene-editor'
 import { NodeEditor } from './logic/node-editor'
 import { GameRunner } from './game/game-runner'
-import { NODE_DEFS } from './logic/node-types'
 import type { GameState } from './types'
 import { buildGameHTML } from './export/game-template'
+import { getAllNodeDefs } from './logic/node-registry'
+import { getCustomNodes, saveCustomNode, deleteCustomNode } from './logic/custom-nodes'
+import type { CustomNodeDef } from './logic/custom-nodes'
 import {
   getAllProjects, getCurrentId, saveProject, loadProject,
   deleteProject, createNewId, setCurrentId, formatDate
@@ -392,7 +394,7 @@ function initNodeEditor() {
   function renderNodeMenu(filter = '') {
     menuItems.innerHTML = ''
     const q = filter.toLowerCase().trim()
-    const all = Object.values(NODE_DEFS)
+    const all = Object.values(getAllNodeDefs())
     for (const cat of CATEGORIES) {
       const nodes = all.filter(n =>
         n.category === cat.id &&
@@ -464,7 +466,7 @@ function initPlayTab() {
     overlay.classList.add('hidden')
     btnStop.classList.remove('hidden')
     btnFullscreen.classList.remove('hidden')
-    gameRunner?.start(states, activeStateId, getAllAssets())
+    gameRunner?.start(states, activeStateId, getAllAssets(), getCustomNodes())
   }
   const stopGame = () => {
     if (document.fullscreenElement) document.exitFullscreen()
@@ -630,7 +632,7 @@ document.getElementById('btn-export-html')?.addEventListener('click', () => {
   saveCurrentStateObjects()
   const assets = getAllAssets()
   const assetsMap = Object.fromEntries(assets.map(a => [a.key, a.dataUrl]))
-  const html = buildGameHTML(states, assetsMap, activeStateId)
+  const html = buildGameHTML(states, assetsMap, activeStateId, getCustomNodes())
   const blob = new Blob([html], { type: 'text/html' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -776,6 +778,91 @@ if ('serviceWorker' in navigator) {
     onOfflineReady() { console.log('[PWA] Tryb offline gotowy!') }
   })
 }
+
+// ── Custom nodes modal ─────────────────────────────────────
+const CUSTOM_NODE_TEMPLATE = `({
+  type: 'moj-wezel',
+  label: 'Mój Węzeł',
+  icon: '⭐',
+  category: 'action',
+  props: {
+    value: { label: 'Wartość', defaultValue: 10 }
+  },
+  run: function(inputs) {
+    // inputs.value  — wartość z pola
+    // this.sprites  — Map<string, Phaser.GameObjects.*>
+    // this.variables — Map<string, number|string> (zmienne globalne)
+    console.log('Mój węzeł:', inputs.value);
+  }
+})`
+
+function renderCustomNodeList() {
+  const list = document.getElementById('custom-node-list')!
+  const nodes = getCustomNodes()
+  if (!nodes.length) {
+    list.innerHTML = '<div class="custom-nodes-empty">Brak własnych węzłów.<br>Wpisz kod poniżej i kliknij Zarejestruj.</div>'
+    return
+  }
+  list.innerHTML = ''
+  for (const n of nodes) {
+    const row = document.createElement('div')
+    row.className = 'custom-node-row'
+    row.innerHTML = `
+      <span class="custom-node-icon">${n.icon}</span>
+      <span class="custom-node-label">${n.label}</span>
+      <code class="custom-node-type">${n.type}</code>
+      <button class="custom-node-del" data-type="${n.type}" title="Usuń węzeł">🗑</button>
+    `
+    row.querySelector<HTMLButtonElement>('.custom-node-del')?.addEventListener('click', () => {
+      if (!confirm(`Usunąć węzeł "${n.label}"?`)) return
+      deleteCustomNode(n.type)
+      renderCustomNodeList()
+    })
+    list.appendChild(row)
+  }
+}
+
+function openCustomNodesModal() {
+  renderCustomNodeList()
+  const ta = document.getElementById('custom-node-code') as HTMLTextAreaElement
+  if (!ta.value.trim()) ta.value = CUSTOM_NODE_TEMPLATE
+  const fb = document.getElementById('custom-node-feedback')!
+  fb.className = 'hidden'
+  fb.textContent = ''
+  document.getElementById('modal-code-backdrop')!.classList.remove('hidden')
+}
+function closeCustomNodesModal() {
+  document.getElementById('modal-code-backdrop')!.classList.add('hidden')
+}
+
+document.getElementById('btn-custom-nodes')?.addEventListener('click', openCustomNodesModal)
+document.getElementById('modal-code-close')?.addEventListener('click', closeCustomNodesModal)
+document.getElementById('modal-code-backdrop')?.addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeCustomNodesModal()
+})
+document.getElementById('btn-register-node')?.addEventListener('click', () => {
+  const code = (document.getElementById('custom-node-code') as HTMLTextAreaElement).value.trim()
+  const fb = document.getElementById('custom-node-feedback')!
+  try {
+    const def = new Function(`return ${code}`)() as CustomNodeDef & { run: (...args: unknown[]) => unknown }
+    if (!def.type || !def.label || typeof def.run !== 'function') throw new Error('Brak wymaganych pól: type, label, run')
+    const node: CustomNodeDef = {
+      type:      String(def.type),
+      label:     String(def.label),
+      icon:      String(def.icon ?? '⭐'),
+      category:  (def.category as CustomNodeDef['category']) ?? 'action',
+      props:     def.props ?? {},
+      runSource: def.run.toString()
+    }
+    saveCustomNode(node)
+    renderCustomNodeList()
+    fb.className = 'custom-node-ok'
+    fb.textContent = `Zarejestrowano węzeł "${node.label}" (${node.type})`
+  } catch (err) {
+    fb.className = 'custom-node-err'
+    fb.textContent = `Błąd: ${err instanceof Error ? err.message : String(err)}`
+  }
+})
 
 // ── Help modal ─────────────────────────────────────────────
 declare const __BUILD_TIME__: string
