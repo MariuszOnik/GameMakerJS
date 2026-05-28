@@ -30,14 +30,17 @@ export class NodeEditor {
   private scale = 1
   private panX = 0
   private panY = 0
-
-
   private idCounter = 0
+  private sceneObjectsProvider: (() => string[]) | null = null
 
   constructor(container: HTMLElement) {
     this.container = container
     this.buildDOM()
     this.bindPanZoom()
+  }
+
+  setSceneObjectsProvider(fn: () => string[]) {
+    this.sceneObjectsProvider = fn
   }
 
   // ── DOM setup ──────────────────────────────────────────
@@ -205,12 +208,32 @@ export class NodeEditor {
         if (meta.options) {
           const sel = document.createElement('select')
           sel.className = 'node-input-field'
-          for (const opt of meta.options) {
-            const o = document.createElement('option')
-            o.value = opt; o.textContent = opt
-            if (String(node.props[key] ?? meta.defaultValue) === opt) o.selected = true
-            sel.appendChild(o)
+
+          const getOpts = (): string[] => {
+            if (meta.options === 'scene-objects' as unknown) {
+              return this.sceneObjectsProvider?.() ?? []
+            }
+            return meta.options as string[]
           }
+
+          const fillOpts = () => {
+            const cur = String(node.props[key] ?? meta.defaultValue)
+            sel.innerHTML = ''
+            for (const opt of getOpts()) {
+              const o = document.createElement('option')
+              o.value = opt; o.textContent = opt
+              if (cur === opt) o.selected = true
+              sel.appendChild(o)
+            }
+            if (!sel.options.length) {
+              const o = document.createElement('option')
+              o.value = cur; o.textContent = cur || '—'
+              sel.appendChild(o)
+            }
+          }
+
+          fillOpts()
+          sel.addEventListener('focus', fillOpts)
           sel.addEventListener('mousedown', e => e.stopPropagation())
           sel.addEventListener('touchstart', e => e.stopPropagation(), { passive: true })
           sel.addEventListener('change', () => { node.props[key] = sel.value })

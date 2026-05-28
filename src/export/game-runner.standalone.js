@@ -58,29 +58,51 @@
       // We add extra helpers below.
       const _scene = this;
 
-      this._execSelf = '';   // set to current object label before each Execute call
-      this._outputStore = {}; // captures SetOutput() values for value nodes
+      this._execSelf = '';
+      this._outputStore = {};
 
-      this.GetObjectByName = function(name) {
+      // ── ctx API (clean, no-this alternative) ───────────────
+      // ctx = this (PlayScene) with structured sub-objects
+      // Execute receives (inputs, ctx) — use whichever you prefer
+
+      this.get = function(name) {
         return _scene.sprites.get(String(name ?? _scene._execSelf)) ?? null;
       };
+      // legacy alias
+      this.GetObjectByName = this.get;
 
-      // Attach top-level helpers defined as `this.Fn = function(){}` during node registration
+      this.getAll = function() { return _scene.sprites; };
+
+      Object.defineProperty(this, 'self', {
+        get: function() { return _scene._execSelf; },
+        configurable: true
+      });
+
+      this.vars = {
+        get: function(name)      { return _scene.variables.get(String(name)) ?? 0; },
+        set: function(name, val) { _scene.variables.set(String(name), val); }
+      };
+
+      this.state = {
+        change: function(name) { _scene.pendingTransition = { id: name, push: false }; },
+        push:   function(name) { _scene.pendingTransition = { id: name, push: true }; },
+        pop:    function()     { _scene.pendingPop = true; },
+        get current()          { return _scene.activeStateName; }
+      };
+
+      // SetOutput: explicit output (alternative to return)
+      this.SetOutput = function(port, val) { _scene._outputStore[port] = val; };
+
+      // Attach top-level helpers: this.DrawText = function(){} during registration
       if (typeof CUSTOM_NODES !== 'undefined') {
         for (const customDef of CUSTOM_NODES) {
           if (!customDef.helpers) continue;
           for (const [name, src] of Object.entries(customDef.helpers)) {
-            try {
-              _scene[name] = new Function('return (' + src + ')')();
-            } catch(e) {
-              console.warn('[Custom Helper "' + name + '"]', e);
-            }
+            try { _scene[name] = new Function('return (' + src + ')')(); }
+            catch(e) { console.warn('[Custom Helper "' + name + '"]', e); }
           }
         }
       }
-      this.SetOutput = function(port, val) {
-        _scene._outputStore[port] = val;
-      };
 
       // Convenience wrappers (same as built-in nodes)
       this.DrawText = function(target, text) {
@@ -321,7 +343,11 @@
                 }
                 this._outputStore = {};
                 this._execSelf = String(ctx.__self || '');
-                runFn.call(this, inputs);
+                const result = runFn.call(this, inputs, this);
+                if (result !== undefined && result !== null) {
+                  if (typeof result === 'object' && !Array.isArray(result)) Object.assign(this._outputStore, result);
+                  else { const fo = customDef.outputs && customDef.outputs.find(function(p){return p.type!=='exec';}); if(fo) this._outputStore[fo.id]=result; }
+                }
                 if (portId in this._outputStore) return this._outputStore[portId];
               } catch (e) {
                 console.error('[Custom Value Node "' + node.type + '"]', e);
@@ -443,7 +469,17 @@
                   if (port.type !== 'exec') inputs[port.id] = this.resolvePort(nodeId, port.id, graph, ctx);
                 }
                 this._execSelf = String(ctx.__self || '');
-                runFn.call(this, inputs);
+                this._outputStore = {};
+                const result = runFn.call(this, inputs, this);
+                // return value from Execute = output
+                if (result !== undefined && result !== null) {
+                  if (typeof result === 'object' && !Array.isArray(result)) {
+                    Object.assign(this._outputStore, result);
+                  } else {
+                    const firstOut = customDef.outputs && customDef.outputs.find(function(p) { return p.type !== 'exec'; });
+                    if (firstOut) this._outputStore[firstOut.id] = result;
+                  }
+                }
               } catch (e) {
                 console.error('[Custom Node "' + node.type + '"]', e);
               }

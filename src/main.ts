@@ -748,6 +748,7 @@ initPlayTab()
 
 sceneEditor!.onReady(() => {
   initNodeEditor()
+  nodeEditor!.setSceneObjectsProvider(() => sceneEditor?.getObjects().map(o => o.label) ?? [])
   initOrientationControls()
 
   const savedId = getCurrentId()
@@ -857,58 +858,61 @@ async function initMonacoEditor() {
   monaco.languages.typescript.javascriptDefaults.addExtraLib(`
 declare class Node {
   constructor(type: string, label: string, icon?: string);
-  input(name: string, type?: 'string'|'number'|'bool'|'any'|'text'|'tekst'|'liczba', label?: string): this;
-  output(name: string, type?: 'string'|'number'|'bool', label?: string): this;
-  prop(name: string, label: string, defaultValue?: string|number, options?: string[]): this;
+  /** Port wejściowy (drut). type: 'string'|'number'|'bool' */
+  input(name: string, type?: string, label?: string): this;
+  /** Port wyjściowy */
+  output(name: string, type?: string, label?: string): this;
+  /** Pole edytowalne w UI węzła. options: tablica lub 'scene-objects' */
+  prop(name: string, label: string, defaultValue?: string|number, options?: string[]|'scene-objects'): this;
   noExecIn(): this;
   noExecOut(): this;
-  run(fn: (this: NodeContext, inputs: Record<string,any>) => void): this;
-  Execute: ((this: NodeContext, inputs: Record<string,any>) => void) | null;
+  run(fn: (inputs: Record<string,any>, ctx: GameCtx) => any): this;
+  Execute: ((inputs: Record<string,any>, ctx: GameCtx) => any) | null;
+  tooltip: string;
 }
-interface NodeContext {
-  /** Nazwa bieżącego obiektu (self) */
+interface GameCtx {
+  /** Nazwa bieżącego obiektu */
   readonly self: string;
-  /** Mapa wszystkich obiektów sceny: nazwa → Phaser.GameObjects.* */
-  readonly sprites: Map<string, any>;
-  /** Globalne zmienne gry */
-  readonly variables: Map<string, number|string>;
-  /** Phaser: tworzenie obiektów (this.add.sprite, this.add.text...) */
-  readonly add: any;
-  /** Phaser: kamera (this.cameras.main) */
-  readonly cameras: any;
-  /** Phaser: fizyka (this.physics.add.existing...) */
-  readonly physics: any;
-  /** Phaser: timery (this.time.delayedCall...) */
-  readonly time: any;
-  /** Pobierz obiekt po nazwie (alias dla sprites.get) */
-  GetObjectByName(name: string): any;
-  /** Ustaw wartość wyjściowego portu (dla węzłów wartości) */
-  SetOutput(port: string, value: any): void;
-  /** Zmień tekst obiektu */
+  /** Pobierz obiekt Phaser po nazwie (null = self) */
+  get(name?: string|null): any;
+  /** Wszystkie obiekty aktywnego stanu */
+  getAll(): Map<string, any>;
+  /** Zmienne globalne */
+  vars: { get(name: string): number|string; set(name: string, value: any): void; };
+  /** Maszyna stanów */
+  state: {
+    change(name: string): void;
+    push(name: string): void;
+    pop(): void;
+    readonly current: string;
+  };
+  /** Phaser: tworzenie obiektów */
+  add: any;
+  /** Phaser: fizyka */
+  physics: any;
+  /** Phaser: kamery */
+  cameras: any;
+  /** Phaser: timery */
+  time: any;
+  /** Phaser: animacje (tweens) */
+  tweens: any;
+  /** Phaser: dźwięk */
+  sound: any;
+  /** Phaser: input (klawiatura, mysz) */
+  input: any;
+  /** Phaser: zdarzenia */
+  events: any;
+  // ── Skróty ──────────────────────────────────────
   DrawText(target: string, text: string): void;
-  /** Przesuń obiekt o delta */
   Move(target: string, dx: number, dy: number): void;
-  /** Ustaw prędkość fizyki */
   SetVelocity(target: string, vx: number, vy: number): void;
-  /** Skocz (gdy obiekt stoi na podłodze) */
   Jump(target: string, force?: number): void;
-  /** Teleportuj obiekt */
   SetPos(target: string, x: number, y: number): void;
-  Show(target: string): void;
-  Hide(target: string): void;
-  Toggle(target: string): void;
-  GetX(target: string): number;
-  GetY(target: string): number;
-  GetVX(target: string): number;
-  GetVY(target: string): number;
-  /** Pobierz globalną zmienną */
-  GetVar(name: string): number|string;
-  /** Ustaw globalną zmienną */
-  SetVar(name: string, value: number|string): void;
-  /** Przejdź do innego stanu */
-  ChangeState(name: string): void;
-  PushState(name: string): void;
-  PopState(): void;
+  Show(target: string): void; Hide(target: string): void; Toggle(target: string): void;
+  GetX(target: string): number; GetY(target: string): number;
+  GetVX(target: string): number; GetVY(target: string): number;
+  /** Ustaw output port (alternatywa dla return) */
+  SetOutput(port: string, value: any): void;
   Log(...args: any[]): void;
 }
 `, 'ts:node-api.d.ts')

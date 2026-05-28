@@ -20,9 +20,10 @@ class Node {
   category(cat) { this._category = cat; return this; }
 
   // Dodaje port wejściowy (drut) — typ: 'string' | 'number' | 'bool' | 'exec'
-  input(name, type, label) {
+  // tooltip: opcjonalny opis wyświetlany po najechaniu
+  input(name, type, tooltip) {
     const t = { any:'number', text:'string', tekst:'string', liczba:'number', bool:'bool' }[type] || type || 'number';
-    this._inputs.push({ id: name, label: label || name, type: t });
+    this._inputs.push({ id: name, label: tooltip || name, type: t });
     return this;
   }
 
@@ -34,11 +35,16 @@ class Node {
   }
 
   // Dodaje pole edytowalne w UI węzła (bez drutu)
+  // options: ['a','b'] = lista statyczna; 'scene-objects' = lista obiektów ze sceny
   prop(name, label, defaultValue, options) {
     this._props[name] = { label: label || name, defaultValue: defaultValue ?? 0 };
-    if (options) this._props[name].options = options;
+    if (options !== undefined) this._props[name].options = options;
     return this;
   }
+
+  // Ustawia tooltip na całym węźle
+  set tooltip(val) { this._tooltip = val; }
+  get tooltip()    { return this._tooltip || ''; }
 
   // Usuwa domyślny exec input (dla węzłów wartości)
   noExecIn()  { this._inputs  = this._inputs.filter(p => p.id !== 'exec'); return this; }
