@@ -150,12 +150,22 @@ texCoord = mod(texCoord, 1.0) * outFrame.zw + outFrame.xy;`},disable:!!e}}},8378
         this.runStateEvent('on-input', { x: p.worldX, y: p.worldY });
         this.runAllObjectsEvent('on-input', { x: p.worldX, y: p.worldY });
       });
+
+      this._fpsEl = document.getElementById('fps-counter');
+      this._fpsFrame = 0;
     }
 
     update() {
       this.handlePendingTransition();
       this.runStateEvent('on-update', {});
       this.runAllObjectsEvent('on-update', {});
+
+      if (this._fpsEl) {
+        this._fpsFrame++;
+        if (this._fpsFrame % 30 === 0) {
+          this._fpsEl.textContent = Math.round(this.game.loop.actualFps) + ' fps';
+        }
+      }
     }
 
     // ── State machine ────────────────────────────────────────────────────────
@@ -468,11 +478,18 @@ texCoord = mod(texCoord, 1.0) * outFrame.zw + outFrame.xy;`},disable:!!e}}},8378
       backdrop-filter: blur(4px);
     }
     #btn-fs:hover { background: rgba(74,222,128,0.25); color: #4ade80; }
+    #fps-counter {
+      position: fixed; top: 14px; left: 12px; z-index: 100;
+      font: 12px/1 monospace; color: #4ade80;
+      background: rgba(0,0,0,0.45); padding: 3px 7px;
+      border-radius: 5px; pointer-events: none;
+    }
   </style>
 </head>
 <body>
   <div id="game-container"></div>
   <button id="btn-fs" title="Pełny ekran">⛶</button>
+  <div id="fps-counter">-- fps</div>
 
   <script src="${le}"><\/script>
   <script>
@@ -557,4 +574,4 @@ texCoord = mod(texCoord, 1.0) * outFrame.zw + outFrame.xy;`},disable:!!e}}},8378
       <div class="asset-name">${n.name}</div>
       <button class="asset-delete" title="Usuń">✕</button>
       ${ot?``:`<button class="asset-add-scene" title="Dodaj do sceny">➕ Do sceny</button>`}
-    `,t.querySelector(`.asset-delete`)?.addEventListener(`click`,e=>{e.stopPropagation(),confirm(`Usunąć "${n.name}"?`)&&(ie(n.key),st())}),t.querySelector(`.asset-add-scene`)?.addEventListener(`click`,e=>{e.stopPropagation();let t=$?.addObject(`sprite`);t&&$?.updateObjectProp(t.id,`assetKey`,n.key),lt(),Ke(`scene`)}),ot&&t.addEventListener(`click`,()=>{ot(n.key),ot=null,lt()}),e.appendChild(t)}}function ct(e){ot=e??null,st(),document.getElementById(`modal-assets-backdrop`).classList.remove(`hidden`)}function lt(){document.getElementById(`modal-assets-backdrop`).classList.add(`hidden`),ot=null}document.getElementById(`btn-assets`)?.addEventListener(`click`,()=>ct()),document.getElementById(`modal-assets-close`)?.addEventListener(`click`,lt),document.getElementById(`modal-assets-backdrop`)?.addEventListener(`click`,e=>{e.target===e.currentTarget&&lt()});var ut=document.getElementById(`asset-file-input`);ut?.addEventListener(`change`,()=>{let e=ut.files?.[0];if(!e)return;let t=new FileReader;t.onload=()=>{try{let n=t.result,r=Z().find(t=>t.name===e.name);if(r){if(!confirm(`Obraz "${e.name}" już istnieje. Zastąpić?`))return;ie(r.key)}Q(e.name,n),$?.reloadWithAssets(),st()}catch{alert(`Nie można wgrać – za mało miejsca w pamięci przeglądarki.`)}},t.readAsDataURL(e),ut.value=``}),Xe(),Qe(),$.onReady(()=>{Ze(),Be();let e=ge();if(e){let t=ve(e);if(t){Pe=e,nt(t);return}}Pe=be(),Fe=[Ve(`Stan1`)],Ie=Fe[0].id,qe(),Ue(`state`)}),window.addEventListener(`resize`,()=>$?.resize()),`serviceWorker`in navigator&&je({immediate:!0,onNeedRefresh(){console.log(`[PWA] Nowa wersja dostępna!`)},onOfflineReady(){console.log(`[PWA] Tryb offline gotowy!`)}});function dt(){document.getElementById(`modal-help-backdrop`).classList.remove(`hidden`)}function ft(){document.getElementById(`modal-help-backdrop`).classList.add(`hidden`)}var pt=document.getElementById(`help-build-info`);pt&&(pt.textContent=`GameMakerJS • build: 28.05.2026, 16:00`),document.getElementById(`btn-help`)?.addEventListener(`click`,dt),document.getElementById(`modal-help-close`)?.addEventListener(`click`,ft),document.getElementById(`modal-help-backdrop`)?.addEventListener(`click`,e=>{e.target===e.currentTarget&&ft()});
+    `,t.querySelector(`.asset-delete`)?.addEventListener(`click`,e=>{e.stopPropagation(),confirm(`Usunąć "${n.name}"?`)&&(ie(n.key),st())}),t.querySelector(`.asset-add-scene`)?.addEventListener(`click`,e=>{e.stopPropagation();let t=$?.addObject(`sprite`);t&&$?.updateObjectProp(t.id,`assetKey`,n.key),lt(),Ke(`scene`)}),ot&&t.addEventListener(`click`,()=>{ot(n.key),ot=null,lt()}),e.appendChild(t)}}function ct(e){ot=e??null,st(),document.getElementById(`modal-assets-backdrop`).classList.remove(`hidden`)}function lt(){document.getElementById(`modal-assets-backdrop`).classList.add(`hidden`),ot=null}document.getElementById(`btn-assets`)?.addEventListener(`click`,()=>ct()),document.getElementById(`modal-assets-close`)?.addEventListener(`click`,lt),document.getElementById(`modal-assets-backdrop`)?.addEventListener(`click`,e=>{e.target===e.currentTarget&&lt()});var ut=document.getElementById(`asset-file-input`);ut?.addEventListener(`change`,()=>{let e=ut.files?.[0];if(!e)return;let t=new FileReader;t.onload=()=>{try{let n=t.result,r=Z().find(t=>t.name===e.name);if(r){if(!confirm(`Obraz "${e.name}" już istnieje. Zastąpić?`))return;ie(r.key)}Q(e.name,n),$?.reloadWithAssets(),st()}catch{alert(`Nie można wgrać – za mało miejsca w pamięci przeglądarki.`)}},t.readAsDataURL(e),ut.value=``}),Xe(),Qe(),$.onReady(()=>{Ze(),Be();let e=ge();if(e){let t=ve(e);if(t){Pe=e,nt(t);return}}Pe=be(),Fe=[Ve(`Stan1`)],Ie=Fe[0].id,qe(),Ue(`state`)}),window.addEventListener(`resize`,()=>$?.resize()),`serviceWorker`in navigator&&je({immediate:!0,onNeedRefresh(){console.log(`[PWA] Nowa wersja dostępna!`)},onOfflineReady(){console.log(`[PWA] Tryb offline gotowy!`)}});function dt(){document.getElementById(`modal-help-backdrop`).classList.remove(`hidden`)}function ft(){document.getElementById(`modal-help-backdrop`).classList.add(`hidden`)}var pt=document.getElementById(`help-build-info`);pt&&(pt.textContent=`GameMakerJS • build: 28.05.2026, 16:05`),document.getElementById(`btn-help`)?.addEventListener(`click`,dt),document.getElementById(`modal-help-close`)?.addEventListener(`click`,ft),document.getElementById(`modal-help-backdrop`)?.addEventListener(`click`,e=>{e.target===e.currentTarget&&ft()});
