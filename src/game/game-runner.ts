@@ -399,8 +399,12 @@ export class GameRunner {
         default: 'arcade',
         arcade: { gravity: { x: 0, y: 500 }, debug: false }
       },
-      scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }
+      scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH }
     })
+  }
+
+  refresh() {
+    this.game?.scale.refresh()
   }
 
   stop() {

@@ -438,18 +438,40 @@ function initPlayTab() {
   const btnStop = document.getElementById('btn-stop')!
   gameRunner = new GameRunner(playViewport)
 
+  const btnFullscreen = document.getElementById('btn-fullscreen')!
+
   const startGame = () => {
     flushNodeEditor()
     saveCurrentStateObjects()
     overlay.classList.add('hidden')
     btnStop.classList.remove('hidden')
+    btnFullscreen.classList.remove('hidden')
     gameRunner?.start(states, activeStateId)
   }
   const stopGame = () => {
+    if (document.fullscreenElement) document.exitFullscreen()
     gameRunner?.stop()
     btnStop.classList.add('hidden')
+    btnFullscreen.classList.add('hidden')
     overlay.classList.remove('hidden')
   }
+
+  btnFullscreen.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      playViewport.requestFullscreen().catch(() => {})
+    } else {
+      document.exitFullscreen()
+    }
+  })
+
+  document.addEventListener('fullscreenchange', () => {
+    const isFs = !!document.fullscreenElement
+    btnFullscreen.textContent = isFs ? '✕' : '⛶'
+    btnFullscreen.title = isFs ? 'Wyjdź z pełnego ekranu' : 'Pełny ekran'
+    // Phaser Scale.RESIZE picks up the change automatically via ResizeObserver,
+    // but an explicit refresh ensures immediate re-layout.
+    gameRunner?.refresh()
+  })
 
   document.getElementById('btn-play-start')?.addEventListener('click', startGame)
   document.getElementById('btn-play-header')?.addEventListener('click', () => { switchTab('play'); startGame() })
