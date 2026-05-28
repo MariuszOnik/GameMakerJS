@@ -52,6 +52,60 @@
 
       this._fpsEl = document.getElementById('fps-counter');
       this._fpsFrame = 0;
+
+      // ── Helper API for custom node Execute functions ────────
+      // `this` inside Execute IS the Phaser.Scene, so this.add / this.cameras etc. work natively.
+      // We add extra helpers below.
+      const _scene = this;
+
+      this._execSelf = '';   // set to current object label before each Execute call
+      this._outputStore = {}; // captures SetOutput() values for value nodes
+
+      this.GetObjectByName = function(name) {
+        return _scene.sprites.get(String(name ?? _scene._execSelf)) ?? null;
+      };
+      this.SetOutput = function(port, val) {
+        _scene._outputStore[port] = val;
+      };
+
+      // Convenience wrappers (same as built-in nodes)
+      this.DrawText = function(target, text) {
+        const s = _scene.sprites.get(String(target ?? _scene._execSelf));
+        if (s && s.setText) s.setText(String(text));
+      };
+      this.Move = function(target, dx, dy) {
+        const s = _scene.sprites.get(String(target ?? _scene._execSelf));
+        if (s) { s.x += Number(dx || 0); s.y += Number(dy || 0); }
+      };
+      this.SetVelocity = function(target, vx, vy) {
+        const s = _scene.sprites.get(String(target ?? _scene._execSelf));
+        const b = s && s.body;
+        if (b && b.setVelocity) b.setVelocity(Number(vx || 0), Number(vy || 0));
+      };
+      this.Jump = function(target, force) {
+        const s = _scene.sprites.get(String(target ?? _scene._execSelf));
+        const b = s && s.body;
+        if (b && b.blocked && b.blocked.down) b.setVelocityY(-Math.abs(Number(force || 400)));
+      };
+      this.SetPos = function(target, x, y) {
+        const s = _scene.sprites.get(String(target ?? _scene._execSelf));
+        if (!s) return;
+        if (s.body && s.body.reset) s.body.reset(Number(x), Number(y));
+        else s.setPosition(Number(x), Number(y));
+      };
+      this.Show   = function(target) { const s = _scene.sprites.get(String(target ?? _scene._execSelf)); if (s) s.setVisible(true); };
+      this.Hide   = function(target) { const s = _scene.sprites.get(String(target ?? _scene._execSelf)); if (s) s.setVisible(false); };
+      this.Toggle = function(target) { const s = _scene.sprites.get(String(target ?? _scene._execSelf)); if (s) s.setVisible(!s.visible); };
+      this.GetX   = function(target) { return _scene.sprites.get(String(target ?? _scene._execSelf))?.x ?? 0; };
+      this.GetY   = function(target) { return _scene.sprites.get(String(target ?? _scene._execSelf))?.y ?? 0; };
+      this.GetVX  = function(target) { return _scene.sprites.get(String(target ?? _scene._execSelf))?.body?.velocity?.x ?? 0; };
+      this.GetVY  = function(target) { return _scene.sprites.get(String(target ?? _scene._execSelf))?.body?.velocity?.y ?? 0; };
+      this.GetVar = function(name)         { return _scene.variables.get(String(name)) ?? 0; };
+      this.SetVar = function(name, val)    { _scene.variables.set(String(name), val); };
+      this.ChangeState = function(name)    { _scene.pendingTransition = { id: name, push: false }; };
+      this.PushState   = function(name)    { _scene.pendingTransition = { id: name, push: true }; };
+      this.PopState    = function()        { _scene.pendingPop = true; };
+      this.Log = console.log.bind(console);
     }
 
     update() {
@@ -237,8 +291,31 @@
           }
           return 0;
         }
-        default:
+        default: {
+          // Value custom node (no exec input): call Execute and capture SetOutput()
+          if (typeof CUSTOM_NODES !== 'undefined') {
+            const customDef = CUSTOM_NODES.find(function(n) { return n.type === node.type; });
+            if (customDef) {
+              try {
+                const runFn = new Function('return (' + customDef.runSource + ')')();
+                const inputs = {};
+                for (const key of Object.keys(customDef.props || {})) {
+                  inputs[key] = this.resolvePort(nodeId, key, graph, ctx);
+                }
+                for (const port of (customDef.inputs || [])) {
+                  if (port.type !== 'exec') inputs[port.id] = this.resolvePort(nodeId, port.id, graph, ctx);
+                }
+                this._outputStore = {};
+                this._execSelf = String(ctx.__self || '');
+                runFn.call(this, inputs);
+                if (portId in this._outputStore) return this._outputStore[portId];
+              } catch (e) {
+                console.error('[Custom Value Node "' + node.type + '"]', e);
+              }
+            }
+          }
           return node.props[portId] !== undefined ? node.props[portId] : 0;
+        }
       }
     }
 
@@ -338,13 +415,12 @@
           return;
 
         default: {
-          // Custom node — look up in CUSTOM_NODES global (injected by game-template)
+          // Custom node — this = Phaser.Scene instance with helper methods added in create()
           if (typeof CUSTOM_NODES !== 'undefined') {
             const customDef = CUSTOM_NODES.find(function(n) { return n.type === node.type; });
-            if (customDef) {
+            if (customDef && customDef.inputs && customDef.inputs.some(function(p) { return p.id === 'exec'; })) {
               try {
                 const runFn = new Function('return (' + customDef.runSource + ')')();
-                // Collect all inputs (props + data ports)
                 const inputs = {};
                 for (const key of Object.keys(customDef.props || {})) {
                   inputs[key] = this.resolvePort(nodeId, key, graph, ctx);
@@ -352,41 +428,8 @@
                 for (const port of (customDef.inputs || [])) {
                   if (port.type !== 'exec') inputs[port.id] = this.resolvePort(nodeId, port.id, graph, ctx);
                 }
-                // Build helper context (GameMaker-style API)
-                const self = this;
-                const selfName = String(ctx.__self || '');
-                function getTarget(t) { return self.sprites.get(String(t != null ? t : selfName)); }
-                const helpers = {
-                  self:        selfName,
-                  sprites:     this.sprites,
-                  variables:   this.variables,
-                  // Draw
-                  DrawText:    function(target, text) { const s = getTarget(target); if (s && s.setText) s.setText(String(text)); },
-                  // Movement
-                  Move:        function(target, dx, dy) { const s = getTarget(target); if (s) { s.x += Number(dx||0); s.y += Number(dy||0); } },
-                  SetPos:      function(target, x, y) { const s = getTarget(target); if (!s) return; if (s.body && s.body.reset) s.body.reset(Number(x),Number(y)); else s.setPosition(Number(x),Number(y)); },
-                  SetVelocity: function(target, vx, vy) { const s = getTarget(target); if (s && s.body && s.body.setVelocity) s.body.setVelocity(Number(vx||0),Number(vy||0)); },
-                  Jump:        function(target, force) { const s = getTarget(target); if (s && s.body && s.body.blocked && s.body.blocked.down) s.body.setVelocityY(-Math.abs(Number(force||400))); },
-                  // Visibility
-                  Show:        function(target) { getTarget(target)?.setVisible(true); },
-                  Hide:        function(target) { getTarget(target)?.setVisible(false); },
-                  Toggle:      function(target) { const s = getTarget(target); if (s) s.setVisible(!s.visible); },
-                  // Properties
-                  GetX:        function(target) { return getTarget(target)?.x ?? 0; },
-                  GetY:        function(target) { return getTarget(target)?.y ?? 0; },
-                  GetVX:       function(target) { return getTarget(target)?.body?.velocity?.x ?? 0; },
-                  GetVY:       function(target) { return getTarget(target)?.body?.velocity?.y ?? 0; },
-                  // Variables
-                  GetVar:      function(name) { return self.variables.get(String(name)) ?? 0; },
-                  SetVar:      function(name, val) { self.variables.set(String(name), val); },
-                  // States
-                  ChangeState: function(name) { self.pendingTransition = { id: name, push: false }; },
-                  PushState:   function(name) { self.pendingTransition = { id: name, push: true }; },
-                  PopState:    function() { self.pendingPop = true; },
-                  // Debug
-                  Log:         console.log.bind(console)
-                };
-                runFn.call(helpers, inputs);
+                this._execSelf = String(ctx.__self || '');
+                runFn.call(this, inputs);
               } catch (e) {
                 console.error('[Custom Node "' + node.type + '"]', e);
               }

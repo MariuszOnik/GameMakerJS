@@ -782,27 +782,40 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── Custom nodes modal ─────────────────────────────────────
-const CUSTOM_NODE_TEMPLATE = `// Utwórz węzeł używając klasy Node
+const CUSTOM_NODE_TEMPLATE = `// ── Węzeł akcji (ma exec wejście i wyjście) ─────────────────
 let DisplayTekst = new Node('pokaz-tekst', 'Pokaż Tekst', '💬')
+DisplayTekst.input('cel', 'string')  // port wejściowy — drut lub pole
+DisplayTekst.input('txt', 'string')
 
-DisplayTekst.input('cel', 'string')   // port wejściowy (drut)
-DisplayTekst.input('txt', 'string')   // port wejściowy (drut)
-
+/**
+ * @this {NodeContext}
+ * @param {{ cel: string, txt: string }} inputs
+ */
 DisplayTekst.Execute = function(inputs) {
-  // inputs.cel, inputs.txt — wartości z portów/pól
-  // Dostępne funkcje pomocnicze (this.*):
-  // this.self                          — nazwa bieżącego obiektu
-  // this.DrawText(cel, tekst)          — zmień tekst obiektu
-  // this.Move(cel, dx, dy)             — przesuń obiekt
-  // this.SetVelocity(cel, vx, vy)      — ustaw prędkość fizyki
-  // this.Jump(cel, siła)               — skocz jeśli na podłodze
-  // this.SetPos(cel, x, y)             — teleportuj
-  // this.Show(cel)/Hide(cel)/Toggle(cel)
-  // this.GetX(cel)/GetY(cel)/GetVX(cel)/GetVY(cel)
-  // this.GetVar(nazwa)/SetVar(nazwa, wartość)
-  // this.ChangeState(nazwa)/PushState(nazwa)/PopState()
-  // this.Log(...)                      — console.log
+  // this = Phaser.Scene + helpers
+  // this.self                 — nazwa bieżącego obiektu
+  // this.GetObjectByName(n)   — pobierz obiekt po nazwie
+  // this.add.sprite(x,y,key)  — Phaser API (tworzenie obiektów)
+  // this.DrawText(cel, txt)   — zmień tekst
+  // this.Move(cel, dx, dy)    — przesuń
+  // this.SetVelocity(cel,vx,vy) / Jump(cel,force)
+  // this.SetPos(cel, x, y)    — teleportuj
+  // this.Show/Hide/Toggle(cel)
+  // this.GetX/GetY/GetVX/GetVY(cel)
+  // this.GetVar(n)/SetVar(n,v) — globalne zmienne
+  // this.ChangeState(n)       — zmień stan gry
   this.DrawText(inputs.cel, inputs.txt)
+}
+
+// ── Węzeł wartości (bez exec, zwraca dane przez SetOutput) ──
+let GetPlayerPos = new Node('get-player-pos', 'Pozycja Gracza', '📍')
+GetPlayerPos.noExecIn().noExecOut()
+GetPlayerPos.output('pozycja', 'string')
+
+/** @this {NodeContext} */
+GetPlayerPos.Execute = function() {
+  const player = this.GetObjectByName('Gracz')
+  if (player) this.SetOutput('pozycja', player.x + ',' + player.y)
 }`
 
 let monacoEditor: unknown = null
@@ -832,7 +845,74 @@ async function initMonacoEditor() {
   const w = window as unknown as { require: { config(o: object): void; (deps: string[], cb: () => void): void } }
   w.require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs' } })
   await new Promise<void>(resolve => w.require(['vs/editor/editor.main'], resolve))
-  const monaco = (window as unknown as { monaco: { editor: { create(el: HTMLElement, opts: object): unknown } } }).monaco
+
+  const monaco = (window as unknown as {
+    monaco: {
+      editor: { create(el: HTMLElement, opts: object): unknown }
+      languages: { typescript: { javascriptDefaults: { addExtraLib(src: string, name: string): void } } }
+    }
+  }).monaco
+
+  // Add type definitions for Node builder and Execute `this` context (IntelliSense)
+  monaco.languages.typescript.javascriptDefaults.addExtraLib(`
+declare class Node {
+  constructor(type: string, label: string, icon?: string);
+  input(name: string, type?: 'string'|'number'|'bool'|'any'|'text'|'tekst'|'liczba', label?: string): this;
+  output(name: string, type?: 'string'|'number'|'bool', label?: string): this;
+  prop(name: string, label: string, defaultValue?: string|number, options?: string[]): this;
+  noExecIn(): this;
+  noExecOut(): this;
+  run(fn: (this: NodeContext, inputs: Record<string,any>) => void): this;
+  Execute: ((this: NodeContext, inputs: Record<string,any>) => void) | null;
+}
+interface NodeContext {
+  /** Nazwa bieżącego obiektu (self) */
+  readonly self: string;
+  /** Mapa wszystkich obiektów sceny: nazwa → Phaser.GameObjects.* */
+  readonly sprites: Map<string, any>;
+  /** Globalne zmienne gry */
+  readonly variables: Map<string, number|string>;
+  /** Phaser: tworzenie obiektów (this.add.sprite, this.add.text...) */
+  readonly add: any;
+  /** Phaser: kamera (this.cameras.main) */
+  readonly cameras: any;
+  /** Phaser: fizyka (this.physics.add.existing...) */
+  readonly physics: any;
+  /** Phaser: timery (this.time.delayedCall...) */
+  readonly time: any;
+  /** Pobierz obiekt po nazwie (alias dla sprites.get) */
+  GetObjectByName(name: string): any;
+  /** Ustaw wartość wyjściowego portu (dla węzłów wartości) */
+  SetOutput(port: string, value: any): void;
+  /** Zmień tekst obiektu */
+  DrawText(target: string, text: string): void;
+  /** Przesuń obiekt o delta */
+  Move(target: string, dx: number, dy: number): void;
+  /** Ustaw prędkość fizyki */
+  SetVelocity(target: string, vx: number, vy: number): void;
+  /** Skocz (gdy obiekt stoi na podłodze) */
+  Jump(target: string, force?: number): void;
+  /** Teleportuj obiekt */
+  SetPos(target: string, x: number, y: number): void;
+  Show(target: string): void;
+  Hide(target: string): void;
+  Toggle(target: string): void;
+  GetX(target: string): number;
+  GetY(target: string): number;
+  GetVX(target: string): number;
+  GetVY(target: string): number;
+  /** Pobierz globalną zmienną */
+  GetVar(name: string): number|string;
+  /** Ustaw globalną zmienną */
+  SetVar(name: string, value: number|string): void;
+  /** Przejdź do innego stanu */
+  ChangeState(name: string): void;
+  PushState(name: string): void;
+  PopState(): void;
+  Log(...args: any[]): void;
+}
+`, 'ts:node-api.d.ts')
+
   monacoEditor = monaco.editor.create(container, {
     value: CUSTOM_NODE_TEMPLATE,
     language: 'javascript',
