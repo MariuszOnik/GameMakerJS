@@ -153,6 +153,60 @@ texCoord = mod(texCoord, 1.0) * outFrame.zw + outFrame.xy;`},disable:!!e}}},8378
 
       this._fpsEl = document.getElementById('fps-counter');
       this._fpsFrame = 0;
+
+      // ── Helper API for custom node Execute functions ────────
+      // \`this\` inside Execute IS the Phaser.Scene, so this.add / this.cameras etc. work natively.
+      // We add extra helpers below.
+      const _scene = this;
+
+      this._execSelf = '';   // set to current object label before each Execute call
+      this._outputStore = {}; // captures SetOutput() values for value nodes
+
+      this.GetObjectByName = function(name) {
+        return _scene.sprites.get(String(name ?? _scene._execSelf)) ?? null;
+      };
+      this.SetOutput = function(port, val) {
+        _scene._outputStore[port] = val;
+      };
+
+      // Convenience wrappers (same as built-in nodes)
+      this.DrawText = function(target, text) {
+        const s = _scene.sprites.get(String(target ?? _scene._execSelf));
+        if (s && s.setText) s.setText(String(text));
+      };
+      this.Move = function(target, dx, dy) {
+        const s = _scene.sprites.get(String(target ?? _scene._execSelf));
+        if (s) { s.x += Number(dx || 0); s.y += Number(dy || 0); }
+      };
+      this.SetVelocity = function(target, vx, vy) {
+        const s = _scene.sprites.get(String(target ?? _scene._execSelf));
+        const b = s && s.body;
+        if (b && b.setVelocity) b.setVelocity(Number(vx || 0), Number(vy || 0));
+      };
+      this.Jump = function(target, force) {
+        const s = _scene.sprites.get(String(target ?? _scene._execSelf));
+        const b = s && s.body;
+        if (b && b.blocked && b.blocked.down) b.setVelocityY(-Math.abs(Number(force || 400)));
+      };
+      this.SetPos = function(target, x, y) {
+        const s = _scene.sprites.get(String(target ?? _scene._execSelf));
+        if (!s) return;
+        if (s.body && s.body.reset) s.body.reset(Number(x), Number(y));
+        else s.setPosition(Number(x), Number(y));
+      };
+      this.Show   = function(target) { const s = _scene.sprites.get(String(target ?? _scene._execSelf)); if (s) s.setVisible(true); };
+      this.Hide   = function(target) { const s = _scene.sprites.get(String(target ?? _scene._execSelf)); if (s) s.setVisible(false); };
+      this.Toggle = function(target) { const s = _scene.sprites.get(String(target ?? _scene._execSelf)); if (s) s.setVisible(!s.visible); };
+      this.GetX   = function(target) { return _scene.sprites.get(String(target ?? _scene._execSelf))?.x ?? 0; };
+      this.GetY   = function(target) { return _scene.sprites.get(String(target ?? _scene._execSelf))?.y ?? 0; };
+      this.GetVX  = function(target) { return _scene.sprites.get(String(target ?? _scene._execSelf))?.body?.velocity?.x ?? 0; };
+      this.GetVY  = function(target) { return _scene.sprites.get(String(target ?? _scene._execSelf))?.body?.velocity?.y ?? 0; };
+      this.GetVar = function(name)         { return _scene.variables.get(String(name)) ?? 0; };
+      this.SetVar = function(name, val)    { _scene.variables.set(String(name), val); };
+      this.ChangeState = function(name)    { _scene.pendingTransition = { id: name, push: false }; };
+      this.PushState   = function(name)    { _scene.pendingTransition = { id: name, push: true }; };
+      this.PopState    = function()        { _scene.pendingPop = true; };
+      this.Log = console.log.bind(console);
     }
 
     update() {
@@ -338,8 +392,31 @@ texCoord = mod(texCoord, 1.0) * outFrame.zw + outFrame.xy;`},disable:!!e}}},8378
           }
           return 0;
         }
-        default:
+        default: {
+          // Value custom node (no exec input): call Execute and capture SetOutput()
+          if (typeof CUSTOM_NODES !== 'undefined') {
+            const customDef = CUSTOM_NODES.find(function(n) { return n.type === node.type; });
+            if (customDef) {
+              try {
+                const runFn = new Function('return (' + customDef.runSource + ')')();
+                const inputs = {};
+                for (const key of Object.keys(customDef.props || {})) {
+                  inputs[key] = this.resolvePort(nodeId, key, graph, ctx);
+                }
+                for (const port of (customDef.inputs || [])) {
+                  if (port.type !== 'exec') inputs[port.id] = this.resolvePort(nodeId, port.id, graph, ctx);
+                }
+                this._outputStore = {};
+                this._execSelf = String(ctx.__self || '');
+                runFn.call(this, inputs);
+                if (portId in this._outputStore) return this._outputStore[portId];
+              } catch (e) {
+                console.error('[Custom Value Node "' + node.type + '"]', e);
+              }
+            }
+          }
           return node.props[portId] !== undefined ? node.props[portId] : 0;
+        }
       }
     }
 
@@ -439,13 +516,12 @@ texCoord = mod(texCoord, 1.0) * outFrame.zw + outFrame.xy;`},disable:!!e}}},8378
           return;
 
         default: {
-          // Custom node — look up in CUSTOM_NODES global (injected by game-template)
+          // Custom node — this = Phaser.Scene instance with helper methods added in create()
           if (typeof CUSTOM_NODES !== 'undefined') {
             const customDef = CUSTOM_NODES.find(function(n) { return n.type === node.type; });
-            if (customDef) {
+            if (customDef && customDef.inputs && customDef.inputs.some(function(p) { return p.id === 'exec'; })) {
               try {
                 const runFn = new Function('return (' + customDef.runSource + ')')();
-                // Collect all inputs (props + data ports)
                 const inputs = {};
                 for (const key of Object.keys(customDef.props || {})) {
                   inputs[key] = this.resolvePort(nodeId, key, graph, ctx);
@@ -453,41 +529,8 @@ texCoord = mod(texCoord, 1.0) * outFrame.zw + outFrame.xy;`},disable:!!e}}},8378
                 for (const port of (customDef.inputs || [])) {
                   if (port.type !== 'exec') inputs[port.id] = this.resolvePort(nodeId, port.id, graph, ctx);
                 }
-                // Build helper context (GameMaker-style API)
-                const self = this;
-                const selfName = String(ctx.__self || '');
-                function getTarget(t) { return self.sprites.get(String(t != null ? t : selfName)); }
-                const helpers = {
-                  self:        selfName,
-                  sprites:     this.sprites,
-                  variables:   this.variables,
-                  // Draw
-                  DrawText:    function(target, text) { const s = getTarget(target); if (s && s.setText) s.setText(String(text)); },
-                  // Movement
-                  Move:        function(target, dx, dy) { const s = getTarget(target); if (s) { s.x += Number(dx||0); s.y += Number(dy||0); } },
-                  SetPos:      function(target, x, y) { const s = getTarget(target); if (!s) return; if (s.body && s.body.reset) s.body.reset(Number(x),Number(y)); else s.setPosition(Number(x),Number(y)); },
-                  SetVelocity: function(target, vx, vy) { const s = getTarget(target); if (s && s.body && s.body.setVelocity) s.body.setVelocity(Number(vx||0),Number(vy||0)); },
-                  Jump:        function(target, force) { const s = getTarget(target); if (s && s.body && s.body.blocked && s.body.blocked.down) s.body.setVelocityY(-Math.abs(Number(force||400))); },
-                  // Visibility
-                  Show:        function(target) { getTarget(target)?.setVisible(true); },
-                  Hide:        function(target) { getTarget(target)?.setVisible(false); },
-                  Toggle:      function(target) { const s = getTarget(target); if (s) s.setVisible(!s.visible); },
-                  // Properties
-                  GetX:        function(target) { return getTarget(target)?.x ?? 0; },
-                  GetY:        function(target) { return getTarget(target)?.y ?? 0; },
-                  GetVX:       function(target) { return getTarget(target)?.body?.velocity?.x ?? 0; },
-                  GetVY:       function(target) { return getTarget(target)?.body?.velocity?.y ?? 0; },
-                  // Variables
-                  GetVar:      function(name) { return self.variables.get(String(name)) ?? 0; },
-                  SetVar:      function(name, val) { self.variables.set(String(name), val); },
-                  // States
-                  ChangeState: function(name) { self.pendingTransition = { id: name, push: false }; },
-                  PushState:   function(name) { self.pendingTransition = { id: name, push: true }; },
-                  PopState:    function() { self.pendingPop = true; },
-                  // Debug
-                  Log:         console.log.bind(console)
-                };
-                runFn.call(helpers, inputs);
+                this._execSelf = String(ctx.__self || '');
+                runFn.call(this, inputs);
               } catch (e) {
                 console.error('[Custom Node "' + node.type + '"]', e);
               }
@@ -698,30 +741,100 @@ class Node {
       <div class="asset-name">${n.name}</div>
       <button class="asset-delete" title="Usuń">✕</button>
       ${ft?``:`<button class="asset-add-scene" title="Dodaj do sceny">➕ Do sceny</button>`}
-    `,t.querySelector(`.asset-delete`)?.addEventListener(`click`,e=>{e.stopPropagation(),confirm(`Usunąć "${n.name}"?`)&&(ie(n.key),pt())}),t.querySelector(`.asset-add-scene`)?.addEventListener(`click`,e=>{e.stopPropagation();let t=$?.addObject(`sprite`);t&&$?.updateObjectProp(t.id,`assetKey`,n.key),ht(),Qe(`scene`)}),ft&&t.addEventListener(`click`,()=>{ft(n.key),ft=null,ht()}),e.appendChild(t)}}function mt(e){ft=e??null,pt(),document.getElementById(`modal-assets-backdrop`).classList.remove(`hidden`)}function ht(){document.getElementById(`modal-assets-backdrop`).classList.add(`hidden`),ft=null}document.getElementById(`btn-assets`)?.addEventListener(`click`,()=>mt()),document.getElementById(`modal-assets-close`)?.addEventListener(`click`,ht),document.getElementById(`modal-assets-backdrop`)?.addEventListener(`click`,e=>{e.target===e.currentTarget&&ht()});var gt=document.getElementById(`asset-file-input`);gt?.addEventListener(`change`,()=>{let e=gt.files?.[0];if(!e)return;let t=new FileReader;t.onload=()=>{try{let n=t.result,r=Z().find(t=>t.name===e.name);if(r){if(!confirm(`Obraz "${e.name}" już istnieje. Zastąpić?`))return;ie(r.key)}Q(e.name,n),$?.reloadWithAssets(),pt()}catch{alert(`Nie można wgrać – za mało miejsca w pamięci przeglądarki.`)}},t.readAsDataURL(e),gt.value=``}),nt(),it(),$.onReady(()=>{rt(),Ke();let e=Se();if(e){let t=we(e);if(t){Be=e,ct(t);return}}Be=Ee(),Ve=[qe(`Stan1`)],He=Ve[0].id,$e(),Ye(`state`)}),window.addEventListener(`resize`,()=>$?.resize()),`serviceWorker`in navigator&&Le({immediate:!0,onNeedRefresh(){console.log(`[PWA] Nowa wersja dostępna!`)},onOfflineReady(){console.log(`[PWA] Tryb offline gotowy!`)}});var _t=`// Utwórz węzeł używając klasy Node
+    `,t.querySelector(`.asset-delete`)?.addEventListener(`click`,e=>{e.stopPropagation(),confirm(`Usunąć "${n.name}"?`)&&(ie(n.key),pt())}),t.querySelector(`.asset-add-scene`)?.addEventListener(`click`,e=>{e.stopPropagation();let t=$?.addObject(`sprite`);t&&$?.updateObjectProp(t.id,`assetKey`,n.key),ht(),Qe(`scene`)}),ft&&t.addEventListener(`click`,()=>{ft(n.key),ft=null,ht()}),e.appendChild(t)}}function mt(e){ft=e??null,pt(),document.getElementById(`modal-assets-backdrop`).classList.remove(`hidden`)}function ht(){document.getElementById(`modal-assets-backdrop`).classList.add(`hidden`),ft=null}document.getElementById(`btn-assets`)?.addEventListener(`click`,()=>mt()),document.getElementById(`modal-assets-close`)?.addEventListener(`click`,ht),document.getElementById(`modal-assets-backdrop`)?.addEventListener(`click`,e=>{e.target===e.currentTarget&&ht()});var gt=document.getElementById(`asset-file-input`);gt?.addEventListener(`change`,()=>{let e=gt.files?.[0];if(!e)return;let t=new FileReader;t.onload=()=>{try{let n=t.result,r=Z().find(t=>t.name===e.name);if(r){if(!confirm(`Obraz "${e.name}" już istnieje. Zastąpić?`))return;ie(r.key)}Q(e.name,n),$?.reloadWithAssets(),pt()}catch{alert(`Nie można wgrać – za mało miejsca w pamięci przeglądarki.`)}},t.readAsDataURL(e),gt.value=``}),nt(),it(),$.onReady(()=>{rt(),Ke();let e=Se();if(e){let t=we(e);if(t){Be=e,ct(t);return}}Be=Ee(),Ve=[qe(`Stan1`)],He=Ve[0].id,$e(),Ye(`state`)}),window.addEventListener(`resize`,()=>$?.resize()),`serviceWorker`in navigator&&Le({immediate:!0,onNeedRefresh(){console.log(`[PWA] Nowa wersja dostępna!`)},onOfflineReady(){console.log(`[PWA] Tryb offline gotowy!`)}});var _t=`// ── Węzeł akcji (ma exec wejście i wyjście) ─────────────────
 let DisplayTekst = new Node('pokaz-tekst', 'Pokaż Tekst', '💬')
+DisplayTekst.input('cel', 'string')  // port wejściowy — drut lub pole
+DisplayTekst.input('txt', 'string')
 
-DisplayTekst.input('cel', 'string')   // port wejściowy (drut)
-DisplayTekst.input('txt', 'string')   // port wejściowy (drut)
-
+/**
+ * @this {NodeContext}
+ * @param {{ cel: string, txt: string }} inputs
+ */
 DisplayTekst.Execute = function(inputs) {
-  // inputs.cel, inputs.txt — wartości z portów/pól
-  // Dostępne funkcje pomocnicze (this.*):
-  // this.self                          — nazwa bieżącego obiektu
-  // this.DrawText(cel, tekst)          — zmień tekst obiektu
-  // this.Move(cel, dx, dy)             — przesuń obiekt
-  // this.SetVelocity(cel, vx, vy)      — ustaw prędkość fizyki
-  // this.Jump(cel, siła)               — skocz jeśli na podłodze
-  // this.SetPos(cel, x, y)             — teleportuj
-  // this.Show(cel)/Hide(cel)/Toggle(cel)
-  // this.GetX(cel)/GetY(cel)/GetVX(cel)/GetVY(cel)
-  // this.GetVar(nazwa)/SetVar(nazwa, wartość)
-  // this.ChangeState(nazwa)/PushState(nazwa)/PopState()
-  // this.Log(...)                      — console.log
+  // this = Phaser.Scene + helpers
+  // this.self                 — nazwa bieżącego obiektu
+  // this.GetObjectByName(n)   — pobierz obiekt po nazwie
+  // this.add.sprite(x,y,key)  — Phaser API (tworzenie obiektów)
+  // this.DrawText(cel, txt)   — zmień tekst
+  // this.Move(cel, dx, dy)    — przesuń
+  // this.SetVelocity(cel,vx,vy) / Jump(cel,force)
+  // this.SetPos(cel, x, y)    — teleportuj
+  // this.Show/Hide/Toggle(cel)
+  // this.GetX/GetY/GetVX/GetVY(cel)
+  // this.GetVar(n)/SetVar(n,v) — globalne zmienne
+  // this.ChangeState(n)       — zmień stan gry
   this.DrawText(inputs.cel, inputs.txt)
-}`,vt=null;function yt(){return vt?vt.getValue():document.getElementById(`custom-node-code`)?.value??``}function bt(e){if(vt){vt.setValue(e);return}let t=document.getElementById(`custom-node-code`);t&&(t.value=e)}async function xt(){if(vt)return;let e=document.getElementById(`monaco-editor-container`);if(!e)return;await new Promise((e,t)=>{if(window.monaco){e();return}let n=document.createElement(`script`);n.src=`https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js`,n.onload=()=>e(),n.onerror=t,document.head.appendChild(n)});let t=window;t.require.config({paths:{vs:`https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs`}}),await new Promise(e=>t.require([`vs/editor/editor.main`],e)),vt=window.monaco.editor.create(e,{value:_t,language:`javascript`,theme:`vs-dark`,fontSize:13,minimap:{enabled:!1},scrollBeyondLastLine:!1,automaticLayout:!0,lineNumbers:`on`,roundedSelection:!0,wordWrap:`on`})}function St(){let e=document.getElementById(`custom-node-list`),t=pe();if(!t.length){e.innerHTML=`<div class="custom-nodes-empty">Brak własnych węzłów. Napisz kod poniżej i kliknij Zarejestruj.</div>`;return}e.innerHTML=``;for(let n of t){let t=document.createElement(`div`);t.className=`custom-node-row`,t.innerHTML=`
+}
+
+// ── Węzeł wartości (bez exec, zwraca dane przez SetOutput) ──
+let GetPlayerPos = new Node('get-player-pos', 'Pozycja Gracza', '📍')
+GetPlayerPos.noExecIn().noExecOut()
+GetPlayerPos.output('pozycja', 'string')
+
+/** @this {NodeContext} */
+GetPlayerPos.Execute = function() {
+  const player = this.GetObjectByName('Gracz')
+  if (player) this.SetOutput('pozycja', player.x + ',' + player.y)
+}`,vt=null;function yt(){return vt?vt.getValue():document.getElementById(`custom-node-code`)?.value??``}function bt(e){if(vt){vt.setValue(e);return}let t=document.getElementById(`custom-node-code`);t&&(t.value=e)}async function xt(){if(vt)return;let e=document.getElementById(`monaco-editor-container`);if(!e)return;await new Promise((e,t)=>{if(window.monaco){e();return}let n=document.createElement(`script`);n.src=`https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js`,n.onload=()=>e(),n.onerror=t,document.head.appendChild(n)});let t=window;t.require.config({paths:{vs:`https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs`}}),await new Promise(e=>t.require([`vs/editor/editor.main`],e));let n=window.monaco;n.languages.typescript.javascriptDefaults.addExtraLib(`
+declare class Node {
+  constructor(type: string, label: string, icon?: string);
+  input(name: string, type?: 'string'|'number'|'bool'|'any'|'text'|'tekst'|'liczba', label?: string): this;
+  output(name: string, type?: 'string'|'number'|'bool', label?: string): this;
+  prop(name: string, label: string, defaultValue?: string|number, options?: string[]): this;
+  noExecIn(): this;
+  noExecOut(): this;
+  run(fn: (this: NodeContext, inputs: Record<string,any>) => void): this;
+  Execute: ((this: NodeContext, inputs: Record<string,any>) => void) | null;
+}
+interface NodeContext {
+  /** Nazwa bieżącego obiektu (self) */
+  readonly self: string;
+  /** Mapa wszystkich obiektów sceny: nazwa → Phaser.GameObjects.* */
+  readonly sprites: Map<string, any>;
+  /** Globalne zmienne gry */
+  readonly variables: Map<string, number|string>;
+  /** Phaser: tworzenie obiektów (this.add.sprite, this.add.text...) */
+  readonly add: any;
+  /** Phaser: kamera (this.cameras.main) */
+  readonly cameras: any;
+  /** Phaser: fizyka (this.physics.add.existing...) */
+  readonly physics: any;
+  /** Phaser: timery (this.time.delayedCall...) */
+  readonly time: any;
+  /** Pobierz obiekt po nazwie (alias dla sprites.get) */
+  GetObjectByName(name: string): any;
+  /** Ustaw wartość wyjściowego portu (dla węzłów wartości) */
+  SetOutput(port: string, value: any): void;
+  /** Zmień tekst obiektu */
+  DrawText(target: string, text: string): void;
+  /** Przesuń obiekt o delta */
+  Move(target: string, dx: number, dy: number): void;
+  /** Ustaw prędkość fizyki */
+  SetVelocity(target: string, vx: number, vy: number): void;
+  /** Skocz (gdy obiekt stoi na podłodze) */
+  Jump(target: string, force?: number): void;
+  /** Teleportuj obiekt */
+  SetPos(target: string, x: number, y: number): void;
+  Show(target: string): void;
+  Hide(target: string): void;
+  Toggle(target: string): void;
+  GetX(target: string): number;
+  GetY(target: string): number;
+  GetVX(target: string): number;
+  GetVY(target: string): number;
+  /** Pobierz globalną zmienną */
+  GetVar(name: string): number|string;
+  /** Ustaw globalną zmienną */
+  SetVar(name: string, value: number|string): void;
+  /** Przejdź do innego stanu */
+  ChangeState(name: string): void;
+  PushState(name: string): void;
+  PopState(): void;
+  Log(...args: any[]): void;
+}
+`,`ts:node-api.d.ts`),vt=n.editor.create(e,{value:_t,language:`javascript`,theme:`vs-dark`,fontSize:13,minimap:{enabled:!1},scrollBeyondLastLine:!1,automaticLayout:!0,lineNumbers:`on`,roundedSelection:!0,wordWrap:`on`})}function St(){let e=document.getElementById(`custom-node-list`),t=pe();if(!t.length){e.innerHTML=`<div class="custom-nodes-empty">Brak własnych węzłów. Napisz kod poniżej i kliknij Zarejestruj.</div>`;return}e.innerHTML=``;for(let n of t){let t=document.createElement(`div`);t.className=`custom-node-row`,t.innerHTML=`
       <span class="custom-node-icon">${n.icon}</span>
       <span class="custom-node-label">${n.label}</span>
       <code class="custom-node-type">${n.type}</code>
       <button class="custom-node-del" data-type="${n.type}" title="Usuń węzeł">🗑</button>
-    `,t.querySelector(`.custom-node-del`)?.addEventListener(`click`,()=>{confirm(`Usunąć węzeł "${n.label}"?`)&&(he(n.type),St())}),e.appendChild(t)}}async function Ct(){St(),document.getElementById(`modal-code-backdrop`).classList.remove(`hidden`);let e=document.getElementById(`custom-node-feedback`);e.className=`hidden`,e.textContent=``,await xt(),yt().trim()||bt(_t)}function wt(){document.getElementById(`modal-code-backdrop`).classList.add(`hidden`)}document.getElementById(`btn-custom-nodes`)?.addEventListener(`click`,()=>Ct()),document.getElementById(`modal-code-close`)?.addEventListener(`click`,wt),document.getElementById(`modal-code-backdrop`)?.addEventListener(`click`,e=>{e.target===e.currentTarget&&wt()}),document.getElementById(`btn-register-node`)?.addEventListener(`click`,()=>{let e=yt().trim(),t=document.getElementById(`custom-node-feedback`);try{let n=`${_e}\n${e}\n__nodes`,r=Function(n)();if(!r.length)throw Error(`Nie znaleziono węzła – utwórz: new Node("typ", "Nazwa", "ikona")`);for(let e of r)me(e._build());St(),t.className=`custom-node-ok`,t.textContent=`Zarejestrowano: ${r.map(e=>`"${e._label}"`).join(`, `)}`}catch(e){t.className=`custom-node-err`,t.textContent=`Błąd: ${e instanceof Error?e.message:String(e)}`}});function Tt(){document.getElementById(`modal-help-backdrop`).classList.remove(`hidden`)}function Et(){document.getElementById(`modal-help-backdrop`).classList.add(`hidden`)}var Dt=document.getElementById(`help-build-info`);Dt&&(Dt.textContent=`GameMakerJS • build: 28.05.2026, 17:18`),document.getElementById(`btn-help`)?.addEventListener(`click`,Tt),document.getElementById(`modal-help-close`)?.addEventListener(`click`,Et),document.getElementById(`modal-help-backdrop`)?.addEventListener(`click`,e=>{e.target===e.currentTarget&&Et()});
+    `,t.querySelector(`.custom-node-del`)?.addEventListener(`click`,()=>{confirm(`Usunąć węzeł "${n.label}"?`)&&(he(n.type),St())}),e.appendChild(t)}}async function Ct(){St(),document.getElementById(`modal-code-backdrop`).classList.remove(`hidden`);let e=document.getElementById(`custom-node-feedback`);e.className=`hidden`,e.textContent=``,await xt(),yt().trim()||bt(_t)}function wt(){document.getElementById(`modal-code-backdrop`).classList.add(`hidden`)}document.getElementById(`btn-custom-nodes`)?.addEventListener(`click`,()=>Ct()),document.getElementById(`modal-code-close`)?.addEventListener(`click`,wt),document.getElementById(`modal-code-backdrop`)?.addEventListener(`click`,e=>{e.target===e.currentTarget&&wt()}),document.getElementById(`btn-register-node`)?.addEventListener(`click`,()=>{let e=yt().trim(),t=document.getElementById(`custom-node-feedback`);try{let n=`${_e}\n${e}\n__nodes`,r=Function(n)();if(!r.length)throw Error(`Nie znaleziono węzła – utwórz: new Node("typ", "Nazwa", "ikona")`);for(let e of r)me(e._build());St(),t.className=`custom-node-ok`,t.textContent=`Zarejestrowano: ${r.map(e=>`"${e._label}"`).join(`, `)}`}catch(e){t.className=`custom-node-err`,t.textContent=`Błąd: ${e instanceof Error?e.message:String(e)}`}});function Tt(){document.getElementById(`modal-help-backdrop`).classList.remove(`hidden`)}function Et(){document.getElementById(`modal-help-backdrop`).classList.add(`hidden`)}var Dt=document.getElementById(`help-build-info`);Dt&&(Dt.textContent=`GameMakerJS • build: 28.05.2026, 17:26`),document.getElementById(`btn-help`)?.addEventListener(`click`,Tt),document.getElementById(`modal-help-close`)?.addEventListener(`click`,Et),document.getElementById(`modal-help-backdrop`)?.addEventListener(`click`,e=>{e.target===e.currentTarget&&Et()});
