@@ -344,11 +344,49 @@
             if (customDef) {
               try {
                 const runFn = new Function('return (' + customDef.runSource + ')')();
+                // Collect all inputs (props + data ports)
                 const inputs = {};
-                for (const key of Object.keys(customDef.props)) {
+                for (const key of Object.keys(customDef.props || {})) {
                   inputs[key] = this.resolvePort(nodeId, key, graph, ctx);
                 }
-                runFn.call(this, inputs);
+                for (const port of (customDef.inputs || [])) {
+                  if (port.type !== 'exec') inputs[port.id] = this.resolvePort(nodeId, port.id, graph, ctx);
+                }
+                // Build helper context (GameMaker-style API)
+                const self = this;
+                const selfName = String(ctx.__self || '');
+                function getTarget(t) { return self.sprites.get(String(t != null ? t : selfName)); }
+                const helpers = {
+                  self:        selfName,
+                  sprites:     this.sprites,
+                  variables:   this.variables,
+                  // Draw
+                  DrawText:    function(target, text) { const s = getTarget(target); if (s && s.setText) s.setText(String(text)); },
+                  // Movement
+                  Move:        function(target, dx, dy) { const s = getTarget(target); if (s) { s.x += Number(dx||0); s.y += Number(dy||0); } },
+                  SetPos:      function(target, x, y) { const s = getTarget(target); if (!s) return; if (s.body && s.body.reset) s.body.reset(Number(x),Number(y)); else s.setPosition(Number(x),Number(y)); },
+                  SetVelocity: function(target, vx, vy) { const s = getTarget(target); if (s && s.body && s.body.setVelocity) s.body.setVelocity(Number(vx||0),Number(vy||0)); },
+                  Jump:        function(target, force) { const s = getTarget(target); if (s && s.body && s.body.blocked && s.body.blocked.down) s.body.setVelocityY(-Math.abs(Number(force||400))); },
+                  // Visibility
+                  Show:        function(target) { getTarget(target)?.setVisible(true); },
+                  Hide:        function(target) { getTarget(target)?.setVisible(false); },
+                  Toggle:      function(target) { const s = getTarget(target); if (s) s.setVisible(!s.visible); },
+                  // Properties
+                  GetX:        function(target) { return getTarget(target)?.x ?? 0; },
+                  GetY:        function(target) { return getTarget(target)?.y ?? 0; },
+                  GetVX:       function(target) { return getTarget(target)?.body?.velocity?.x ?? 0; },
+                  GetVY:       function(target) { return getTarget(target)?.body?.velocity?.y ?? 0; },
+                  // Variables
+                  GetVar:      function(name) { return self.variables.get(String(name)) ?? 0; },
+                  SetVar:      function(name, val) { self.variables.set(String(name), val); },
+                  // States
+                  ChangeState: function(name) { self.pendingTransition = { id: name, push: false }; },
+                  PushState:   function(name) { self.pendingTransition = { id: name, push: true }; },
+                  PopState:    function() { self.pendingPop = true; },
+                  // Debug
+                  Log:         console.log.bind(console)
+                };
+                runFn.call(helpers, inputs);
               } catch (e) {
                 console.error('[Custom Node "' + node.type + '"]', e);
               }

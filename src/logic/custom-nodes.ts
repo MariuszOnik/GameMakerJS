@@ -1,8 +1,12 @@
+import type { PortDef } from './node-types'
+
 export interface CustomNodeDef {
   type: string
   label: string
   icon: string
   category: 'event' | 'action' | 'value'
+  inputs: PortDef[]
+  outputs: PortDef[]
   props: Record<string, { label: string; defaultValue: string | number; options?: string[] }>
   runSource: string
 }

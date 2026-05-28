@@ -7,6 +7,8 @@ import { buildGameHTML } from './export/game-template'
 import { getAllNodeDefs } from './logic/node-registry'
 import { getCustomNodes, saveCustomNode, deleteCustomNode } from './logic/custom-nodes'
 import type { CustomNodeDef } from './logic/custom-nodes'
+// @ts-ignore
+import nodeBuildPrelude from './logic/node-builder-prelude.js?raw'
 import {
   getAllProjects, getCurrentId, saveProject, loadProject,
   deleteProject, createNewId, setCurrentId, formatDate
@@ -780,27 +782,76 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── Custom nodes modal ─────────────────────────────────────
-const CUSTOM_NODE_TEMPLATE = `({
-  type: 'moj-wezel',
-  label: 'Mój Węzeł',
-  icon: '⭐',
-  category: 'action',
-  props: {
-    value: { label: 'Wartość', defaultValue: 10 }
-  },
-  run: function(inputs) {
-    // inputs.value  — wartość z pola
-    // this.sprites  — Map<string, Phaser.GameObjects.*>
-    // this.variables — Map<string, number|string> (zmienne globalne)
-    console.log('Mój węzeł:', inputs.value);
-  }
-})`
+const CUSTOM_NODE_TEMPLATE = `// Utwórz węzeł używając klasy Node
+let DisplayTekst = new Node('pokaz-tekst', 'Pokaż Tekst', '💬')
+
+DisplayTekst.input('cel', 'string')   // port wejściowy (drut)
+DisplayTekst.input('txt', 'string')   // port wejściowy (drut)
+
+DisplayTekst.Execute = function(inputs) {
+  // inputs.cel, inputs.txt — wartości z portów/pól
+  // Dostępne funkcje pomocnicze (this.*):
+  // this.self                          — nazwa bieżącego obiektu
+  // this.DrawText(cel, tekst)          — zmień tekst obiektu
+  // this.Move(cel, dx, dy)             — przesuń obiekt
+  // this.SetVelocity(cel, vx, vy)      — ustaw prędkość fizyki
+  // this.Jump(cel, siła)               — skocz jeśli na podłodze
+  // this.SetPos(cel, x, y)             — teleportuj
+  // this.Show(cel)/Hide(cel)/Toggle(cel)
+  // this.GetX(cel)/GetY(cel)/GetVX(cel)/GetVY(cel)
+  // this.GetVar(nazwa)/SetVar(nazwa, wartość)
+  // this.ChangeState(nazwa)/PushState(nazwa)/PopState()
+  // this.Log(...)                      — console.log
+  this.DrawText(inputs.cel, inputs.txt)
+}`
+
+let monacoEditor: unknown = null
+
+function getEditorValue(): string {
+  if (monacoEditor) return (monacoEditor as { getValue(): string }).getValue()
+  return (document.getElementById('custom-node-code') as HTMLTextAreaElement | null)?.value ?? ''
+}
+function setEditorValue(v: string) {
+  if (monacoEditor) { (monacoEditor as { setValue(s: string): void }).setValue(v); return }
+  const ta = document.getElementById('custom-node-code') as HTMLTextAreaElement | null
+  if (ta) ta.value = v
+}
+
+async function initMonacoEditor() {
+  if (monacoEditor) return
+  const container = document.getElementById('monaco-editor-container')
+  if (!container) return
+  await new Promise<void>((resolve, reject) => {
+    if ((window as unknown as Record<string, unknown>).monaco) { resolve(); return }
+    const s = document.createElement('script')
+    s.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js'
+    s.onload = () => resolve()
+    s.onerror = reject
+    document.head.appendChild(s)
+  })
+  const w = window as unknown as { require: { config(o: object): void; (deps: string[], cb: () => void): void } }
+  w.require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs' } })
+  await new Promise<void>(resolve => w.require(['vs/editor/editor.main'], resolve))
+  const monaco = (window as unknown as { monaco: { editor: { create(el: HTMLElement, opts: object): unknown } } }).monaco
+  monacoEditor = monaco.editor.create(container, {
+    value: CUSTOM_NODE_TEMPLATE,
+    language: 'javascript',
+    theme: 'vs-dark',
+    fontSize: 13,
+    minimap: { enabled: false },
+    scrollBeyondLastLine: false,
+    automaticLayout: true,
+    lineNumbers: 'on',
+    roundedSelection: true,
+    wordWrap: 'on'
+  })
+}
 
 function renderCustomNodeList() {
   const list = document.getElementById('custom-node-list')!
   const nodes = getCustomNodes()
   if (!nodes.length) {
-    list.innerHTML = '<div class="custom-nodes-empty">Brak własnych węzłów.<br>Wpisz kod poniżej i kliknij Zarejestruj.</div>'
+    list.innerHTML = '<div class="custom-nodes-empty">Brak własnych węzłów. Napisz kod poniżej i kliknij Zarejestruj.</div>'
     return
   }
   list.innerHTML = ''
@@ -822,42 +873,34 @@ function renderCustomNodeList() {
   }
 }
 
-function openCustomNodesModal() {
+async function openCustomNodesModal() {
   renderCustomNodeList()
-  const ta = document.getElementById('custom-node-code') as HTMLTextAreaElement
-  if (!ta.value.trim()) ta.value = CUSTOM_NODE_TEMPLATE
-  const fb = document.getElementById('custom-node-feedback')!
-  fb.className = 'hidden'
-  fb.textContent = ''
   document.getElementById('modal-code-backdrop')!.classList.remove('hidden')
+  const fb = document.getElementById('custom-node-feedback')!
+  fb.className = 'hidden'; fb.textContent = ''
+  await initMonacoEditor()
+  if (!getEditorValue().trim()) setEditorValue(CUSTOM_NODE_TEMPLATE)
 }
 function closeCustomNodesModal() {
   document.getElementById('modal-code-backdrop')!.classList.add('hidden')
 }
 
-document.getElementById('btn-custom-nodes')?.addEventListener('click', openCustomNodesModal)
+document.getElementById('btn-custom-nodes')?.addEventListener('click', () => openCustomNodesModal())
 document.getElementById('modal-code-close')?.addEventListener('click', closeCustomNodesModal)
 document.getElementById('modal-code-backdrop')?.addEventListener('click', e => {
   if (e.target === e.currentTarget) closeCustomNodesModal()
 })
 document.getElementById('btn-register-node')?.addEventListener('click', () => {
-  const code = (document.getElementById('custom-node-code') as HTMLTextAreaElement).value.trim()
+  const code = getEditorValue().trim()
   const fb = document.getElementById('custom-node-feedback')!
   try {
-    const def = new Function(`return ${code}`)() as CustomNodeDef & { run: (...args: unknown[]) => unknown }
-    if (!def.type || !def.label || typeof def.run !== 'function') throw new Error('Brak wymaganych pól: type, label, run')
-    const node: CustomNodeDef = {
-      type:      String(def.type),
-      label:     String(def.label),
-      icon:      String(def.icon ?? '⭐'),
-      category:  (def.category as CustomNodeDef['category']) ?? 'action',
-      props:     def.props ?? {},
-      runSource: def.run.toString()
-    }
-    saveCustomNode(node)
+    const fullCode = `${nodeBuildPrelude}\n${code}\n__nodes`
+    const created = new Function(fullCode)() as Array<{ _build(): CustomNodeDef; _label: string }>
+    if (!created.length) throw new Error('Nie znaleziono węzła – utwórz: new Node("typ", "Nazwa", "ikona")')
+    for (const n of created) saveCustomNode(n._build())
     renderCustomNodeList()
     fb.className = 'custom-node-ok'
-    fb.textContent = `Zarejestrowano węzeł "${node.label}" (${node.type})`
+    fb.textContent = `Zarejestrowano: ${created.map(n => `"${n._label}"`).join(', ')}`
   } catch (err) {
     fb.className = 'custom-node-err'
     fb.textContent = `Błąd: ${err instanceof Error ? err.message : String(err)}`

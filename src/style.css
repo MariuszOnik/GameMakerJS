@@ -911,6 +911,10 @@ select.node-input-field { cursor: pointer; }
   padding: 12px 14px; overflow: hidden; min-height: 0;
 }
 .custom-node-editor-label { font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
+#monaco-editor-container {
+  flex: 1; min-height: 260px; border-radius: 8px;
+  border: 1px solid var(--border); overflow: hidden;
+}
 #custom-node-code {
   flex: 1; min-height: 200px; background: var(--bg-deep);
   border: 1px solid var(--border); border-radius: 8px;
