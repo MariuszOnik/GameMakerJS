@@ -964,3 +964,87 @@ select.node-input-field { cursor: pointer; }
 
 /* ── Utilities ────────────────────────────────────────── */
 .hidden { display: none !important; }
+
+/* ── State tabs bar ───────────────────────────────────── */
+#state-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px;
+  background: var(--bg-deep);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-shrink: 0;
+  height: 36px;
+  -webkit-overflow-scrolling: touch;
+}
+.state-tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px 6px 0 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.state-tab:hover { color: var(--text); }
+.state-tab.active {
+  background: var(--bg-panel);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.state-tab-name { pointer-events: none; }
+.state-tab.active .state-tab-name { pointer-events: auto; }
+.state-tab-rename {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--accent);
+  color: var(--text);
+  font-size: 12px;
+  width: 80px;
+  outline: none;
+}
+.state-tab-del {
+  font-size: 10px;
+  color: var(--text-dim);
+  padding: 1px 3px;
+  border-radius: 3px;
+  opacity: 0.6;
+  transition: opacity 0.1s, color 0.1s;
+}
+.state-tab-del:hover { opacity: 1; color: #ef4444; }
+.state-tab-add {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+  border: 1px dashed var(--border);
+  background: transparent;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.state-tab-add:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ── Graph context label ──────────────────────────────── */
+.graph-context-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  flex-shrink: 0;
+}

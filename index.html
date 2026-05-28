@@ -30,6 +30,7 @@
       <main id="app-content">
         <!-- SCENE TAB -->
         <div id="tab-scene" class="tab-panel active">
+          <div id="state-tabs-bar"></div>
           <div id="scene-toolbar">
             <button class="tool-btn active" data-tool="select" title="Zaznacz i przesuń obiekt">↖</button>
             <button class="tool-btn" data-tool="move" title="Przesuń kamerę (lub: środkowy przycisk / Spacja+drag)">✋</button>
@@ -70,6 +71,8 @@
         <!-- LOGIC TAB -->
         <div id="tab-logic" class="tab-panel">
           <div id="logic-toolbar">
+            <span id="graph-context-label" class="graph-context-label">📝 Stan1 / Globalny</span>
+            <div class="toolbar-sep"></div>
             <button id="btn-add-node" class="tool-btn">＋ Węzeł</button>
             <div class="toolbar-sep"></div>
             <button id="btn-clear-graph" class="tool-btn" title="Wyczyść graf">🗑</button>

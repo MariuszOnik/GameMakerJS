@@ -1,9 +1,11 @@
+import type { GameState } from './types'
+
 export interface SavedProject {
   id: string
   name: string
   savedAt: number
-  objects: unknown[]
-  graph: string
+  states: GameState[]
+  activeStateId: string
 }
 
 interface Store {
@@ -11,7 +13,7 @@ interface Store {
   projects: Record<string, SavedProject>
 }
 
-const KEY = 'gmjs_store'
+const KEY = 'gmjs_store_v2'
 
 function load(): Store {
   try {
@@ -34,9 +36,9 @@ export function getCurrentId(): string {
   return load().currentId
 }
 
-export function saveProject(id: string, name: string, objects: unknown[], graph: string) {
+export function saveProject(id: string, name: string, states: GameState[], activeStateId: string) {
   const store = load()
-  store.projects[id] = { id, name, savedAt: Date.now(), objects, graph }
+  store.projects[id] = { id, name, savedAt: Date.now(), states, activeStateId }
   store.currentId = id
   persist(store)
 }

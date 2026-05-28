@@ -1,23 +1,8 @@
 import Phaser from 'phaser'
 import { getAllAssets } from '../assets-store'
+import type { SceneObjectDef } from '../types'
 
-export interface SceneObject {
-  id: string
-  type: 'sprite' | 'text' | 'rect' | 'empty'
-  x: number
-  y: number
-  width?: number
-  height?: number
-  label: string
-  color?: number
-  text?: string
-  assetKey?: string
-  physicsEnabled?: boolean
-  isStatic?: boolean
-  bounce?: number
-  allowGravity?: boolean
-  collideWorldBounds?: boolean
-  cameraFollow?: boolean
+export interface SceneObject extends SceneObjectDef {
   phaserObj?: Phaser.GameObjects.GameObject
 }
 
@@ -231,6 +216,7 @@ export class SceneEditor {
       label: `${src.label}_kopia`,
       x: src.x + 24,
       y: src.y + 24,
+      graph: src.graph ?? '',
       phaserObj: undefined
     }
     this.objects.push(copy)
@@ -254,7 +240,8 @@ export class SceneEditor {
       height: type === 'rect' ? 60 : 64,
       label: type === 'sprite' ? `Sprite${this.idCounter}` : type === 'text' ? `Tekst${this.idCounter}` : `Rect${this.idCounter}`,
       color: type === 'sprite' ? 0x4ade80 : 0x60a5fa,
-      text: type === 'text' ? 'Hello' : undefined
+      text: type === 'text' ? 'Hello' : undefined,
+      graph: ''
     }
     this.objects.push(obj)
 
@@ -402,7 +389,16 @@ export class SceneEditor {
     else this.onReadyCallback = cb
   }
 
-  loadScene(saved: Omit<SceneObject, 'phaserObj'>[]) {
+  getObjectGraph(id: string): string {
+    return this.objects.find(o => o.id === id)?.graph ?? ''
+  }
+
+  setObjectGraph(id: string, graph: string) {
+    const obj = this.objects.find(o => o.id === id)
+    if (obj) obj.graph = graph
+  }
+
+  loadScene(saved: SceneObjectDef[]) {
     // Destroy existing Phaser objects
     this.objects.forEach(o => {
       if (o.phaserObj) {

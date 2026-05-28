@@ -3,6 +3,7 @@ import { SceneEditor } from './editor/scene-editor'
 import { NodeEditor } from './logic/node-editor'
 import { GameRunner } from './game/game-runner'
 import { NODE_DEFS } from './logic/node-types'
+import type { GameState } from './types'
 import {
   getAllProjects, getCurrentId, saveProject, loadProject,
   deleteProject, createNewId, setCurrentId, formatDate
@@ -15,6 +16,61 @@ let nodeEditor: NodeEditor | null = null
 let gameRunner: GameRunner | null = null
 let currentProjectId = ''
 
+// ── State machine data ─────────────────────────────────────
+// Each state has a name, objects (owned by sceneEditor) and a global graph.
+// activeStateId points to the state currently being edited.
+let states: GameState[] = []
+let activeStateId = ''
+
+// Node editor context: which graph is currently being edited.
+// 'state' = the active state's global graph
+// { objId } = a specific object's graph
+type GraphContext = 'state' | { objId: string }
+let graphContext: GraphContext = 'state'
+
+// ── Helpers ────────────────────────────────────────────────
+
+function getActiveState(): GameState | undefined {
+  return states.find(s => s.id === activeStateId)
+}
+
+function createDefaultState(name: string): GameState {
+  return { id: `state_${Date.now()}_${Math.random().toString(36).slice(2)}`, name, objects: [], graph: '' }
+}
+
+// Flush the current node-editor content into the right graph slot before switching.
+function flushNodeEditor() {
+  if (!nodeEditor) return
+  const graph = nodeEditor.serialize()
+  if (graphContext === 'state') {
+    const s = getActiveState()
+    if (s) s.graph = graph
+  } else {
+    sceneEditor?.setObjectGraph(graphContext.objId, graph)
+  }
+}
+
+// Load the right graph into node-editor and update the context label.
+function loadGraphForContext(ctx: GraphContext) {
+  graphContext = ctx
+  let json = ''
+  let label = ''
+
+  const state = getActiveState()
+  if (ctx === 'state') {
+    json = state?.graph ?? ''
+    label = `${state?.name ?? '?'} / Globalny`
+  } else {
+    json = sceneEditor?.getObjectGraph(ctx.objId) ?? ''
+    const obj = sceneEditor?.getObjects().find(o => o.id === ctx.objId)
+    label = `${state?.name ?? '?'} / ${obj?.label ?? '?'}`
+  }
+
+  nodeEditor?.load(json)
+  const el = document.getElementById('graph-context-label')
+  if (el) el.textContent = `📝 ${label}`
+}
+
 // ── Tab switching ──────────────────────────────────────────
 const tabBtns = document.querySelectorAll<HTMLButtonElement>('.tab-btn')
 const tabPanels = document.querySelectorAll<HTMLElement>('.tab-panel')
@@ -23,9 +79,107 @@ function switchTab(name: string) {
   tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === name))
   tabPanels.forEach(p => p.classList.toggle('active', p.id === `tab-${name}`))
   if (name === 'scene') sceneEditor?.resize()
+  // When switching to logic tab, refresh node editor context
+  if (name === 'logic') loadGraphForContext(graphContext)
 }
 
-tabBtns.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab!)))
+tabBtns.forEach(btn => btn.addEventListener('click', () => {
+  flushNodeEditor()
+  switchTab(btn.dataset.tab!)
+}))
+
+// ── State management ───────────────────────────────────────
+
+function renderStateTabs() {
+  const bar = document.getElementById('state-tabs-bar')!
+  bar.innerHTML = ''
+
+  for (const s of states) {
+    const btn = document.createElement('button')
+    btn.className = 'state-tab' + (s.id === activeStateId ? ' active' : '')
+    btn.title = `Przełącz na stan: ${s.name}`
+
+    const nameSpan = document.createElement('span')
+    nameSpan.className = 'state-tab-name'
+    nameSpan.textContent = s.name
+
+    // Inline rename on double-click
+    nameSpan.addEventListener('dblclick', e => {
+      e.stopPropagation()
+      const input = document.createElement('input')
+      input.className = 'state-tab-rename'
+      input.value = s.name
+      input.addEventListener('mousedown', ev => ev.stopPropagation())
+      input.addEventListener('keydown', ev => {
+        if (ev.key === 'Enter' || ev.key === 'Escape') input.blur()
+      })
+      input.addEventListener('blur', () => {
+        const newName = input.value.trim() || s.name
+        s.name = newName
+        renderStateTabs()
+      })
+      nameSpan.replaceWith(input)
+      input.focus()
+      input.select()
+    })
+
+    const delBtn = document.createElement('button')
+    delBtn.className = 'state-tab-del'
+    delBtn.textContent = '✕'
+    delBtn.title = 'Usuń stan'
+    delBtn.addEventListener('click', e => {
+      e.stopPropagation()
+      if (states.length <= 1) return alert('Projekt musi mieć co najmniej jeden stan.')
+      if (!confirm(`Usunąć stan "${s.name}"?`)) return
+      const idx = states.indexOf(s)
+      states.splice(idx, 1)
+      if (activeStateId === s.id) {
+        switchToState(states[Math.max(0, idx - 1)].id)
+      } else {
+        renderStateTabs()
+      }
+    })
+
+    btn.appendChild(nameSpan)
+    btn.appendChild(delBtn)
+    btn.addEventListener('click', () => switchToState(s.id))
+    bar.appendChild(btn)
+  }
+
+  const addBtn = document.createElement('button')
+  addBtn.className = 'state-tab-add'
+  addBtn.textContent = '＋ Stan'
+  addBtn.title = 'Dodaj nowy stan'
+  addBtn.addEventListener('click', () => {
+    flushNodeEditor()
+    saveCurrentStateObjects()
+    const newState = createDefaultState(`Stan${states.length + 1}`)
+    states.push(newState)
+    switchToState(newState.id)
+  })
+  bar.appendChild(addBtn)
+}
+
+function switchToState(id: string) {
+  flushNodeEditor()
+  saveCurrentStateObjects()
+  activeStateId = id
+  // Load objects from the new active state into sceneEditor
+  const state = getActiveState()
+  sceneEditor?.loadScene(state?.objects ?? [])
+  renderStateTabs()
+  loadGraphForContext('state')
+}
+
+// Persist current sceneEditor objects back into the active state.
+function saveCurrentStateObjects() {
+  const state = getActiveState()
+  if (!state) return
+  state.objects = sceneEditor?.getObjects().map(({ phaserObj: _p, ...rest }) => ({
+    ...rest,
+    graph: rest.graph ?? ''
+  })) ?? []
+}
 
 // ── Scene editor ───────────────────────────────────────────
 function initSceneEditor() {
@@ -35,12 +189,21 @@ function initSceneEditor() {
   sceneEditor.onSelect(obj => {
     const empty = document.getElementById('inspector-empty')!
     const props = document.getElementById('inspector-props')!
+
     if (!obj) {
+      // Deselected: flush object graph, switch context to state global graph
+      flushNodeEditor()
+      loadGraphForContext('state')
       empty.classList.remove('hidden')
       props.classList.add('hidden')
       props.innerHTML = ''
       return
     }
+
+    // Selected object: flush current graph, switch context to object's graph
+    flushNodeEditor()
+    loadGraphForContext({ objId: obj.id })
+
     empty.classList.add('hidden')
     props.classList.remove('hidden')
     props.innerHTML = `
@@ -84,10 +247,14 @@ function initSceneEditor() {
         </div>
       </div>
       <div class="inspector-row" style="gap:6px">
+        <button id="btn-edit-logic" class="btn-secondary">⬡ Edytuj logikę</button>
+      </div>
+      <div class="inspector-row" style="gap:6px">
         <button id="btn-duplicate-obj" class="btn-secondary">⧉ Duplikuj</button>
         <button id="btn-delete-obj" class="btn-danger">🗑 Usuń</button>
       </div>
     `
+
     props.querySelector<HTMLInputElement>('#insp-label')?.addEventListener('change', e =>
       sceneEditor?.updateObjectProp(obj.id, 'label', (e.target as HTMLInputElement).value))
     props.querySelector<HTMLInputElement>('#insp-x')?.addEventListener('change', e =>
@@ -104,6 +271,9 @@ function initSceneEditor() {
       sceneEditor?.select(null))
     props.querySelector('#btn-pick-asset')?.addEventListener('click', () =>
       openAssetsModal(key => sceneEditor?.updateObjectProp(obj.id, 'assetKey', key)))
+    props.querySelector('#btn-edit-logic')?.addEventListener('click', () => {
+      switchTab('logic')
+    })
     props.querySelector('#btn-duplicate-obj')?.addEventListener('click', () =>
       sceneEditor?.duplicateObject(obj.id))
     props.querySelector('#btn-delete-obj')?.addEventListener('click', () =>
@@ -166,7 +336,6 @@ function initSceneEditor() {
     if (inspectorOpen) sceneEditor?.resize()
   })
 
-  // Keyboard shortcuts for selected object
   window.addEventListener('keydown', e => {
     if (document.activeElement?.tagName === 'INPUT') return
     if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -253,7 +422,7 @@ function initNodeEditor() {
     }
   })
   document.getElementById('btn-clear-graph')?.addEventListener('click', () => {
-    if (confirm('Wyczyścić cały graf?')) nodeEditor?.clear()
+    if (confirm('Wyczyścić bieżący graf?')) nodeEditor?.clear()
   })
   document.getElementById('btn-export-graph')?.addEventListener('click', () => {
     const blob = new Blob([nodeEditor?.serialize() ?? '{}'], { type: 'application/json' })
@@ -270,9 +439,11 @@ function initPlayTab() {
   gameRunner = new GameRunner(playViewport)
 
   const startGame = () => {
+    flushNodeEditor()
+    saveCurrentStateObjects()
     overlay.classList.add('hidden')
     btnStop.classList.remove('hidden')
-    gameRunner?.start(sceneEditor?.getObjects() ?? [], nodeEditor?.serialize() ?? '{}')
+    gameRunner?.start(states, activeStateId)
   }
   const stopGame = () => {
     gameRunner?.stop()
@@ -294,16 +465,11 @@ function setNameInput(name: string) {
 }
 
 function save(showFeedback = true) {
-  const objects = sceneEditor?.getObjects().map(o => ({
-    id: o.id, type: o.type, x: o.x, y: o.y,
-    width: o.width, height: o.height, label: o.label, color: o.color, text: o.text, assetKey: o.assetKey,
-    physicsEnabled: o.physicsEnabled, isStatic: o.isStatic, bounce: o.bounce,
-    allowGravity: o.allowGravity, collideWorldBounds: o.collideWorldBounds, cameraFollow: o.cameraFollow
-  })) ?? []
-  const graph = nodeEditor?.serialize() ?? '{}'
+  flushNodeEditor()
+  saveCurrentStateObjects()
 
   if (!currentProjectId) currentProjectId = createNewId()
-  saveProject(currentProjectId, getNameInput(), objects, graph)
+  saveProject(currentProjectId, getNameInput(), states, activeStateId)
 
   if (showFeedback) {
     const btn = document.getElementById('btn-save')!
@@ -312,10 +478,14 @@ function save(showFeedback = true) {
   }
 }
 
-function applyProject(proj: { name: string; objects: unknown[]; graph: string }) {
+function applyProject(proj: { name: string; states: GameState[]; activeStateId: string }) {
   setNameInput(proj.name)
-  sceneEditor?.loadScene(proj.objects as Parameters<SceneEditor['loadScene']>[0])
-  if (nodeEditor && proj.graph) nodeEditor.load(proj.graph)
+  states = proj.states.length ? proj.states : [createDefaultState('Stan1')]
+  activeStateId = proj.states.find(s => s.id === proj.activeStateId) ? proj.activeStateId : states[0].id
+  const state = getActiveState()
+  sceneEditor?.loadScene(state?.objects ?? [])
+  renderStateTabs()
+  loadGraphForContext('state')
 }
 
 // ── Project manager modal ──────────────────────────────────
@@ -352,7 +522,7 @@ function renderProjectList() {
       const id = btn.dataset.id!
       const proj = loadProject(id)
       if (!proj) return
-      save(false) // auto-save current before switching
+      save(false)
       currentProjectId = id
       setCurrentId(id)
       applyProject(proj)
@@ -376,8 +546,11 @@ function renderProjectList() {
         } else {
           currentProjectId = createNewId()
           setNameInput('Projekt 1')
+          states = [createDefaultState('Stan1')]
+          activeStateId = states[0].id
           sceneEditor?.clearScene()
-          nodeEditor?.clear()
+          renderStateTabs()
+          loadGraphForContext('state')
         }
       }
       renderProjectList()
@@ -403,8 +576,11 @@ document.getElementById('btn-new-project')?.addEventListener('click', () => {
   currentProjectId = createNewId()
   setCurrentId(currentProjectId)
   setNameInput('Nowy Projekt')
+  states = [createDefaultState('Stan1')]
+  activeStateId = states[0].id
   sceneEditor?.clearScene()
-  nodeEditor?.clear()
+  renderStateTabs()
+  loadGraphForContext('state')
   closeModal()
 })
 
@@ -415,11 +591,13 @@ document.getElementById('btn-new')?.addEventListener('click', () => {
   currentProjectId = createNewId()
   setCurrentId(currentProjectId)
   setNameInput('Nowy Projekt')
+  states = [createDefaultState('Stan1')]
+  activeStateId = states[0].id
   sceneEditor?.clearScene()
-  nodeEditor?.clear()
+  renderStateTabs()
+  loadGraphForContext('state')
 })
 
-// Auto-save every 30s
 setInterval(() => save(false), 30_000)
 
 // ── Assets modal ───────────────────────────────────────────
@@ -513,7 +691,6 @@ initPlayTab()
 sceneEditor!.onReady(() => {
   initNodeEditor()
 
-  // Load last active project
   const savedId = getCurrentId()
   if (savedId) {
     const proj = loadProject(savedId)
@@ -523,25 +700,25 @@ sceneEditor!.onReady(() => {
       return
     }
   }
-  // No saved project – start fresh with a new ID
+
+  // Fresh start
   currentProjectId = createNewId()
+  states = [createDefaultState('Stan1')]
+  activeStateId = states[0].id
+  renderStateTabs()
+  loadGraphForContext('state')
 })
 
 window.addEventListener('resize', () => sceneEditor?.resize())
 
-// Na samym dole pliku (np. src/main.ts lub index.ts)
 // @ts-ignore
 import { registerSW } from 'virtual:pwa-register'
 
 if ('serviceWorker' in navigator) {
   registerSW({
     immediate: true,
-    onNeedRefresh() {
-      console.log('[PWA] Dostępna nowa wersja! Przeładuj aplikację.')
-    },
-    onOfflineReady() {
-      console.log('[PWA] Aplikacja w pełni gotowa do pracy OFFLINE!')
-    }
+    onNeedRefresh() { console.log('[PWA] Nowa wersja dostępna!') },
+    onOfflineReady() { console.log('[PWA] Tryb offline gotowy!') }
   })
 }
 
