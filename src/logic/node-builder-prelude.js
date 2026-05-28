@@ -49,9 +49,9 @@ class Node {
   // Alias dla .Execute = fn
   run(fn) { this.Execute = fn; return this; }
 
-  _build() {
+  _build(helpers) {
     if (!this.Execute) throw new Error(`Węzeł "${this._type}" nie ma funkcji Execute.`);
-    return {
+    const def = {
       type:      this._type,
       label:     this._label,
       icon:      this._icon,
@@ -61,5 +61,7 @@ class Node {
       props:     this._props,
       runSource: this.Execute.toString()
     };
+    if (helpers && Object.keys(helpers).length > 0) def.helpers = helpers;
+    return def;
   }
 }

@@ -9,6 +9,7 @@ export interface CustomNodeDef {
   outputs: PortDef[]
   props: Record<string, { label: string; defaultValue: string | number; options?: string[] }>
   runSource: string
+  helpers?: Record<string, string>  // top-level this.Fn = function(){} captured at registration
 }
 
 const KEY = 'gmjs_custom_nodes'

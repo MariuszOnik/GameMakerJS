@@ -64,6 +64,20 @@
       this.GetObjectByName = function(name) {
         return _scene.sprites.get(String(name ?? _scene._execSelf)) ?? null;
       };
+
+      // Attach top-level helpers defined as `this.Fn = function(){}` during node registration
+      if (typeof CUSTOM_NODES !== 'undefined') {
+        for (const customDef of CUSTOM_NODES) {
+          if (!customDef.helpers) continue;
+          for (const [name, src] of Object.entries(customDef.helpers)) {
+            try {
+              _scene[name] = new Function('return (' + src + ')')();
+            } catch(e) {
+              console.warn('[Custom Helper "' + name + '"]', e);
+            }
+          }
+        }
+      }
       this.SetOutput = function(port, val) {
         _scene._outputStore[port] = val;
       };

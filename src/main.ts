@@ -974,10 +974,21 @@ document.getElementById('btn-register-node')?.addEventListener('click', () => {
   const code = getEditorValue().trim()
   const fb = document.getElementById('custom-node-feedback')!
   try {
-    const fullCode = `${nodeBuildPrelude}\n${code}\n__nodes`
-    const created = new Function(fullCode)() as Array<{ _build(): CustomNodeDef; _label: string }>
-    if (!created.length) throw new Error('Nie znaleziono węzła – utwórz: new Node("typ", "Nazwa", "ikona")')
-    for (const n of created) saveCustomNode(n._build())
+    // Proxy przechwytuje top-level `this.DrawText = function(){}` jako helpery węzła
+    const helperCapture: Record<string, string> = {}
+    const proxy = new Proxy({} as Record<string, unknown>, {
+      set(_t, prop: string, value: unknown) {
+        if (typeof value === 'function') helperCapture[prop] = (value as () => void).toString()
+        return true
+      },
+      get() { return undefined }
+    })
+
+    const fullCode = `${nodeBuildPrelude}\n${code}\nreturn __nodes`
+    const created = (new Function(fullCode)).call(proxy) as Array<{ _build(h: Record<string,string>): CustomNodeDef; _label: string }>
+
+    if (!created || !created.length) throw new Error('Nie znaleziono węzła – utwórz: new Node("typ", "Nazwa", "ikona")')
+    for (const n of created) saveCustomNode(n._build(helperCapture))
     renderCustomNodeList()
     fb.className = 'custom-node-ok'
     fb.textContent = `Zarejestrowano: ${created.map(n => `"${n._label}"`).join(', ')}`
